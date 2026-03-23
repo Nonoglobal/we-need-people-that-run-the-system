@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Система доступа</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --border: #1e1e1e;
+    --accent: #c8ff00;
+    --text: #e0e0e0;
+    --muted: #555;
+    --danger: #ff3c3c;
+    --col: 280px;
+    --gap: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+  }
+
+  /* ── LOCK ── */
+  #lockScreen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 9999;
+  }
+  #lockScreen.hidden { display: none; }
+
+  .lock-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2rem, 6vw, 4.5rem);
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    margin-bottom: 0.25em;
+  }
+  .lock-sub {
+    font-size: 0.68rem; color: var(--muted);
+    letter-spacing: 0.3em; text-transform: uppercase;
+    margin-bottom: 3rem;
+  }
+  .lock-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 2.5rem; width: min(420px, 92vw);
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  .lock-label {
+    font-size: 0.63rem; letter-spacing: 0.25em;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+  #passwordInput {
+    background: #0d0d0d; border: 1px solid var(--border);
+    color: var(--text); font-family: 'Share Tech Mono', monospace;
+    font-size: 1rem; padding: 0.75rem 1rem; width: 100%;
+    outline: none; transition: border-color 0.2s; letter-spacing: 0.1em;
+  }
+  #passwordInput:focus { border-color: var(--accent); }
+  #passwordInput.error { border-color: var(--danger); animation: shake 0.35s; }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)}
+  }
+  #unlockBtn {
+    background: var(--accent); color: #000; border: none;
+    padding: 0.85rem; font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem; letter-spacing: 0.2em; cursor: pointer;
+    transition: opacity 0.15s; width: 100%;
+  }
+  #unlockBtn:hover { opacity: 0.85; }
+  #lockMsg {
+    font-size: 0.68rem; letter-spacing: 0.12em; min-height: 1.2em;
+    text-align: center; white-space: pre-wrap; word-break: break-word; line-height: 1.6;
+  }
+  .lock-footer { font-size: 0.56rem; color: #282828; text-align: center; letter-spacing: 0.1em; }
+
+  /* ── GALLERY ── */
+  #gallery { display: none; }
+  #gallery.visible { display: block; }
+
+  header {
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    position: sticky; top: 0;
+    background: rgba(10,10,10,0.96);
+    backdrop-filter: blur(10px); z-index: 100;
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.9rem; letter-spacing: 0.15em; color: var(--accent);
+  }
+  #counter { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.18em; }
+  #searchInput {
+    background: #0d0d0d; border: 1px solid var(--border);
+    color: var(--text); font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem; padding: 0.45rem 0.75rem; outline: none;
+    width: 150px; transition: border-color 0.2s;
+  }
+  #searchInput:focus { border-color: var(--accent); }
+  #searchInput::placeholder { color: var(--muted); }
+
+  .header-actions { margin-left: auto; display: flex; gap: 0.5rem; align-items: center; }
+
+  #uploadBtn {
+    background: var(--accent); color: #000; border: none;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem; letter-spacing: 0.15em; cursor: pointer;
+    padding: 0.45rem 1rem;
+    transition: opacity 0.15s; white-space: nowrap;
+  }
+  #uploadBtn:hover { opacity: 0.85; }
+
+  #dlAllBtn {
+    background: none; border: 1px solid var(--border);
+    color: var(--text); font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem; padding: 0.45rem 0.9rem; cursor: pointer;
+    letter-spacing: 0.12em; transition: border-color 0.15s, color 0.15s; white-space: nowrap;
+  }
+  #dlAllBtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── UPLOAD MODAL ── */
+  #uploadModal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92); z-index: 9000;
+    align-items: center; justify-content: center;
+  }
+  #uploadModal.open { display: flex; }
+
+  .upload-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 2.5rem; width: min(480px, 94vw);
+    display: flex; flex-direction: column; gap: 1.2rem;
+  }
+  .upload-box h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem; letter-spacing: 0.15em; color: var(--accent);
+  }
+
+  #dropZone {
+    border: 2px dashed var(--border);
+    padding: 2.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    font-size: 0.72rem; color: var(--muted); letter-spacing: 0.15em;
+  }
+  #dropZone:hover, #dropZone.drag-over {
+    border-color: var(--accent); background: rgba(200,255,0,0.03);
+    color: var(--accent);
+  }
+  #fileInput { display: none; }
+
+  #uploadQueue {
+    display: flex; flex-direction: column; gap: 0.5rem;
+    max-height: 220px; overflow-y: auto;
+  }
+  .queue-item {
+    display: flex; align-items: center; gap: 0.6rem;
+    font-size: 0.65rem; letter-spacing: 0.08em; color: var(--text);
+  }
+  .queue-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .queue-item-status { color: var(--muted); white-space: nowrap; min-width: 60px; text-align: right; }
+  .queue-item-status.ok { color: var(--accent); }
+  .queue-item-status.err { color: var(--danger); }
+
+  .upload-actions { display: flex; gap: 0.7rem; }
+  #startUploadBtn {
+    flex: 1; background: var(--accent); color: #000; border: none;
+    padding: 0.75rem; font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem; letter-spacing: 0.2em; cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  #startUploadBtn:hover { opacity: 0.85; }
+  #startUploadBtn:disabled { opacity: 0.35; cursor: default; }
+
+  #closeUploadBtn {
+    background: none; border: 1px solid var(--border); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 0.75rem;
+    padding: 0.75rem 1rem; cursor: pointer; letter-spacing: 0.1em;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  #closeUploadBtn:hover { border-color: var(--danger); color: var(--danger); }
+
+  #uploadMsg {
+    font-size: 0.65rem; letter-spacing: 0.12em; color: var(--muted);
+    min-height: 1em; text-align: center;
+  }
+
+  /* ── MASONRY ── */
+  #masonryWrap { padding: var(--gap); }
+  #masonry { columns: var(--col); column-gap: var(--gap); }
+  @media (max-width: 600px) { :root { --col: 160px; --gap: 6px; } }
+
+  .card {
+    break-inside: avoid; margin-bottom: var(--gap);
+    position: relative; overflow: hidden; cursor: pointer;
+    background: var(--surface); display: block;
+  }
+  .card img {
+    width: 100%; height: auto; display: block;
+    opacity: 0; transition: opacity 0.35s;
+  }
+  .card img.loaded { opacity: 1; }
+
+  .card-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0); transition: background 0.2s;
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .card:hover .card-overlay { background: rgba(0,0,0,0.5); }
+
+  .card-bar {
+    padding: 0.5rem 0.6rem;
+    display: flex; justify-content: space-between; align-items: center;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 0.2s, transform 0.2s;
+    font-size: 0.6rem; letter-spacing: 0.1em; color: #ccc;
+    gap: 0.4rem;
+  }
+  .card:hover .card-bar { opacity: 1; transform: translateY(0); }
+
+  .card-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .card-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff; font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem; padding: 0.2rem 0.5rem; cursor: pointer;
+    transition: border-color 0.15s, color 0.15s; white-space: nowrap;
+  }
+  .card-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .card-btn.del:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ── LOADING STATE ── */
+  #loadingState {
+    padding: 4rem; text-align: center;
+    color: var(--muted); font-size: 0.75rem; letter-spacing: 0.3em;
+  }
+  #loadingState .dot { animation: blink 1.2s infinite; }
+  #loadingState .dot:nth-child(2) { animation-delay: 0.2s; }
+  #loadingState .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+  #noResults {
+    display: none; padding: 4rem; text-align: center;
+    color: var(--muted); font-size: 0.8rem; letter-spacing: 0.3em;
+  }
+
+  /* ── LIGHTBOX ── */
+  #lightbox {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.96); z-index: 8888;
+    align-items: center; justify-content: center; flex-direction: column; gap: 1rem;
+  }
+  #lightbox.open { display: flex; }
+
+  #lightboxImg {
+    max-width: 90vw; max-height: 82vh;
+    object-fit: contain; border: 1px solid var(--border); display: block;
+  }
+  .lb-bar { display: flex; align-items: center; gap: 1.2rem; }
+  #lightboxLabel { font-size: 0.68rem; letter-spacing: 0.22em; color: var(--muted); }
+  #lbDlBtn, #lightboxClose {
+    background: none; border: 1px solid var(--border); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 0.68rem;
+    padding: 0.35rem 0.9rem; cursor: pointer; letter-spacing: 0.12em;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  #lbDlBtn:hover { border-color: var(--accent); color: var(--accent); }
+  #lightboxClose {
+    position: absolute; top: 1.2rem; right: 1.2rem; font-size: 0.78rem;
+  }
+  #lightboxClose:hover { border-color: var(--accent); color: var(--accent); }
+  .lb-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    background: none; border: 1px solid var(--border); color: var(--text);
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem;
+    padding: 0.5rem 0.9rem; cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .lb-nav:hover { border-color: var(--accent); color: var(--accent); }
+  #lbPrev { left: 1.2rem; } #lbNext { right: 1.2rem; }
+
+  /* ── CONFIRM MODAL ── */
+  #confirmModal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.88); z-index: 9500;
+    align-items: center; justify-content: center;
+  }
+  #confirmModal.open { display: flex; }
+  .confirm-box {
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 2rem; width: min(360px, 92vw);
+    display: flex; flex-direction: column; gap: 1.2rem;
+  }
+  .confirm-box p { font-size: 0.75rem; letter-spacing: 0.1em; line-height: 1.7; color: var(--text); }
+  .confirm-box strong { color: var(--accent); }
+  .confirm-actions { display: flex; gap: 0.7rem; }
+  #confirmYes {
+    flex: 1; background: var(--danger); color: #fff; border: none;
+    padding: 0.7rem; font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem; letter-spacing: 0.15em; cursor: pointer;
+  }
+  #confirmNo {
+    flex: 1; background: none; border: 1px solid var(--border); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 0.72rem;
+    padding: 0.7rem; cursor: pointer; letter-spacing: 0.1em;
+    transition: border-color 0.15s;
+  }
+  #confirmNo:hover { border-color: var(--accent); }
+
+  /* ── PROGRESS TOAST ── */
+  #dlProgress {
+    display: none; position: fixed; bottom: 1.5rem; right: 1.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 0.9rem 1.3rem; font-size: 0.68rem; letter-spacing: 0.1em;
+    color: var(--text); z-index: 9000; min-width: 220px;
+  }
+  #dlProgress.visible { display: block; }
+  #dlBar { height: 2px; background: var(--border); margin-top: 0.6rem; }
+  #dlBarFill { height: 100%; background: var(--accent); width: 0%; transition: width 0.12s; }
+</style>
+</head>
+<body>
+
+<!-- LOCK -->
+<div id="lockScreen">
+  <div class="lock-title">ЗАЩИЩЁННАЯ ЗОНА</div>
+  <div class="lock-sub">Доступ ограничен · Введите пароль для входа</div>
+  <div class="lock-box">
+    <div>
+      <div class="lock-label">Пароль доступа</div>
+      <input type="password" id="passwordInput" placeholder="••••••••••••••••" autocomplete="off" />
+    </div>
+    <button id="unlockBtn">ВОЙТИ В СИСТЕМУ</button>
+    <div id="lockMsg"></div>
+    <div class="lock-footer">© Система авторизации v2.4 · Несанкционированный доступ запрещён законом</div>
+  </div>
+</div>
+
+<!-- GALLERY -->
+<div id="gallery">
+  <header>
+    <h1>Galerie</h1>
+    <span id="counter">—</span>
+    <input type="text" id="searchInput" placeholder="Dateiname suchen …" />
+    <div class="header-actions">
+      <button id="uploadBtn">⬆ Hochladen</button>
+      <button id="dlAllBtn">⬇ Alle herunterladen</button>
+    </div>
+  </header>
+  <div id="masonryWrap">
+    <div id="loadingState">
+      LADE BILDER<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+    </div>
+    <div id="masonry"></div>
+    <div id="noResults">Keine Ergebnisse</div>
+  </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div id="uploadModal">
+  <div class="upload-box">
+    <h2>Bilder hochladen</h2>
+    <div id="dropZone">
+      DATEIEN HIER ABLEGEN<br>
+      <span style="font-size:0.6rem;margin-top:0.4rem;display:block">oder klicken zum Auswählen · JPG / PNG / WEBP / GIF</span>
+    </div>
+    <input type="file" id="fileInput" multiple accept="image/*" />
+    <div id="uploadQueue"></div>
+    <div id="uploadMsg"></div>
+    <div class="upload-actions">
+      <button id="startUploadBtn" disabled>HOCHLADEN</button>
+      <button id="closeUploadBtn">ABBRECHEN</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox">
+  <button id="lightboxClose">✕ Schließen</button>
+  <button class="lb-nav" id="lbPrev">‹</button>
+  <img id="lightboxImg" src="" alt="" />
+  <div class="lb-bar">
+    <div id="lightboxLabel"></div>
+    <button id="lbDlBtn">⬇ Herunterladen</button>
+  </div>
+  <button class="lb-nav" id="lbNext">›</button>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div id="confirmModal">
+  <div class="confirm-box">
+    <p>Bild <strong id="confirmName"></strong> wirklich löschen?<br>Diese Aktion kann nicht rückgängig gemacht werden.</p>
+    <div class="confirm-actions">
+      <button id="confirmYes">LÖSCHEN</button>
+      <button id="confirmNo">ABBRECHEN</button>
+    </div>
+  </div>
+</div>
+
+<div id="dlProgress">
+  <div id="dlProgressText">Lade herunter …</div>
+  <div id="dlBar"><div id="dlBarFill"></div></div>
+</div>
+
+<script>
+// ── CONFIG ──
+const CLOUD_NAME = 'dal67qskn';
+const UPLOAD_PRESET = 'gallery_unsigned'; // Du musst dieses Preset in Cloudinary anlegen! (siehe Anleitung unten)
+const FOLDER = 'gallery';
+
+// ── PASSWORDS ──
+const MAIN_PW   = "we need people to run the system";
+const BACKUP_PW = "010999";
+
+// ── LOCK ──
+const lockScreen = document.getElementById('lockScreen');
+const pwInput    = document.getElementById('passwordInput');
+const lockMsg    = document.getElementById('lockMsg');
+let galleryBuilt = false;
+
+function setMsg(txt, color) { lockMsg.style.color = color; lockMsg.textContent = txt; }
+
+function tryUnlock() {
+  const v = pwInput.value;
+  if (v === MAIN_PW) {
+    lockScreen.classList.add('hidden');
+    document.getElementById('gallery').classList.add('visible');
+    if (!galleryBuilt) { buildGallery(); galleryBuilt = true; }
+  } else if (v === BACKUP_PW) {
+    setMsg('Richtiges Passwort:\n' + MAIN_PW, 'var(--accent)');
+    pwInput.value = '';
+  } else {
+    pwInput.classList.add('error');
+    setMsg('Неверный пароль. Попробуйте снова.', 'var(--danger)');
+    setTimeout(() => pwInput.classList.remove('error'), 400);
+  }
+}
+
+document.getElementById('unlockBtn').addEventListener('click', tryUnlock);
+pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+
+// ── CLOUDINARY ──
+const CLOUDINARY_API = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}`;
+
+// Load all images from Cloudinary via Search API (unsigned, using API key as header not needed for public resources)
+// We use the resource list endpoint with a fetch trick
+async function fetchCloudinaryImages() {
+  // Use Cloudinary's resource listing - we do a signed fetch via the Search API
+  // For unsigned listing we use next_cursor pagination with resource_type=image
+  const url = `${CLOUDINARY_API}/resources/image?max_results=500&prefix=${FOLDER}/&type=upload`;
+  
+  const apiKey = '962639543477177';
+  const apiSecret = 'Uk6KjIbFF_u7dWVhZEuOOc258Fw';
+  
+  const resp = await fetch(url, {
+    headers: {
+      'Authorization': 'Basic ' + btoa(`${apiKey}:${apiSecret}`)
+    }
+  });
+  
+  if (!resp.ok) throw new Error('Cloudinary fetch failed: ' + resp.status);
+  const data = await resp.json();
+  return data.resources || [];
+}
+
+async function deleteCloudinaryImage(publicId) {
+  // For deletion from the browser we need a signed request
+  // We use the destroy endpoint with timestamp + signature
+  const apiKey    = '962639543477177';
+  const apiSecret = 'Uk6KjIbFF_u7dWVhZEuOOc258Fw';
+  const timestamp = Math.floor(Date.now() / 1000);
+
+  // Generate SHA-1 signature
+  const strToSign = `public_id=${publicId}&timestamp=${timestamp}${apiSecret}`;
+  const signature = await sha1(strToSign);
+
+  const fd = new FormData();
+  fd.append('public_id', publicId);
+  fd.append('api_key', apiKey);
+  fd.append('timestamp', timestamp);
+  fd.append('signature', signature);
+
+  const resp = await fetch(`${CLOUDINARY_API}/image/destroy`, { method: 'POST', body: fd });
+  const data = await resp.json();
+  return data.result === 'ok';
+}
+
+// SHA-1 helper (Web Crypto)
+async function sha1(str) {
+  const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── GALLERY ──
+const masonry     = document.getElementById('masonry');
+const counter     = document.getElementById('counter');
+const searchInput = document.getElementById('searchInput');
+const noResults   = document.getElementById('noResults');
+const loadingState = document.getElementById('loadingState');
+
+let allCards     = [];
+let visibleCards = [];
+let currentIndex = 0;
+
+async function buildGallery() {
+  loadingState.style.display = 'block';
+  masonry.innerHTML = '';
+  allCards = [];
+
+  try {
+    const resources = await fetchCloudinaryImages();
+    loadingState.style.display = 'none';
+
+    if (resources.length === 0) {
+      noResults.style.display = 'block';
+      noResults.textContent = 'Noch keine Bilder. Lade welche hoch!';
+      counter.textContent = '0 Bilder';
+      return;
+    }
+
+    resources.forEach(res => addCard(res));
+    counter.textContent = `${resources.length} Bilder`;
+    visibleCards = [...allCards];
+  } catch(e) {
+    loadingState.style.display = 'none';
+    loadingState.textContent = '';
+    noResults.style.display = 'block';
+    noResults.textContent = 'Fehler beim Laden der Bilder.';
+    console.error(e);
+  }
+}
+
+function getThumbUrl(publicId, w = 400) {
+  return `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/w_${w},c_limit,q_auto,f_auto/${publicId}`;
+}
+function getFullUrl(publicId) {
+  return `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/q_auto,f_auto/${publicId}`;
+}
+
+function addCard(resource) {
+  const publicId = resource.public_id;
+  const name = publicId.split('/').pop();
+  const thumbUrl = getThumbUrl(publicId);
+  const fullUrl  = getFullUrl(publicId);
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.src    = fullUrl;
+  card.dataset.thumb  = thumbUrl;
+  card.dataset.name   = name;
+  card.dataset.pid    = publicId;
+
+  const img = document.createElement('img');
+  img.src = thumbUrl; img.alt = name;
+  img.loading = 'lazy';
+  img.onload = () => img.classList.add('loaded');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'card-overlay';
+  const bar = document.createElement('div');
+  bar.className = 'card-bar';
+
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'card-name';
+  nameSpan.textContent = name;
+
+  const dlBtn = document.createElement('button');
+  dlBtn.className = 'card-btn';
+  dlBtn.textContent = '⬇';
+  dlBtn.title = 'Herunterladen';
+  dlBtn.addEventListener('click', e => { e.stopPropagation(); downloadOne(fullUrl, name); });
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'card-btn del';
+  delBtn.textContent = '✕';
+  delBtn.title = 'Löschen';
+  delBtn.addEventListener('click', e => { e.stopPropagation(); askDelete(card, publicId, name); });
+
+  bar.appendChild(nameSpan);
+  bar.appendChild(dlBtn);
+  bar.appendChild(delBtn);
+  overlay.appendChild(bar);
+  card.appendChild(img);
+  card.appendChild(overlay);
+  card.addEventListener('click', () => openLightbox(card));
+
+  masonry.appendChild(card);
+  allCards.push(card);
+}
+
+// ── SEARCH ──
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  visibleCards = [];
+  let n = 0;
+  allCards.forEach(c => {
+    const show = q === '' || c.dataset.name.toLowerCase().includes(q);
+    c.style.display = show ? '' : 'none';
+    if (show) { visibleCards.push(c); n++; }
+  });
+  counter.textContent = q ? `${n} von ${allCards.length}` : `${allCards.length} Bilder`;
+  noResults.style.display = n === 0 ? 'block' : 'none';
+});
+
+// ── DOWNLOAD ──
+function downloadOne(src, name) {
+  const a = document.createElement('a');
+  a.href = src; a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+document.getElementById('dlAllBtn').addEventListener('click', async () => {
+  const list = visibleCards.filter(c => c.dataset.src);
+  if (!list.length) return;
+  const dlProg = document.getElementById('dlProgress');
+  const dlTxt  = document.getElementById('dlProgressText');
+  const dlFill = document.getElementById('dlBarFill');
+  dlProg.classList.add('visible');
+  dlFill.style.width = '0%';
+
+  for (let i = 0; i < list.length; i++) {
+    const src  = list[i].dataset.src;
+    const name = list[i].dataset.name;
+    try {
+      const blob = await (await fetch(src)).blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch(e) {}
+    dlFill.style.width = Math.round(((i+1)/list.length)*100) + '%';
+    dlTxt.textContent  = `${i+1} / ${list.length} heruntergeladen …`;
+    await new Promise(r => setTimeout(r, 60));
+  }
+  dlTxt.textContent = `✓ Fertig! ${list.length} Bilder gespeichert.`;
+  setTimeout(() => dlProg.classList.remove('visible'), 3500);
+});
+
+// ── DELETE ──
+let pendingDelete = null;
+
+function askDelete(card, publicId, name) {
+  pendingDelete = { card, publicId, name };
+  document.getElementById('confirmName').textContent = name;
+  document.getElementById('confirmModal').classList.add('open');
+}
+
+document.getElementById('confirmYes').addEventListener('click', async () => {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (!pendingDelete) return;
+  const { card, publicId, name } = pendingDelete;
+  pendingDelete = null;
+
+  try {
+    const ok = await deleteCloudinaryImage(publicId);
+    if (ok) {
+      const idx = allCards.indexOf(card);
+      if (idx > -1) allCards.splice(idx, 1);
+      const vi = visibleCards.indexOf(card);
+      if (vi > -1) visibleCards.splice(vi, 1);
+      card.remove();
+      counter.textContent = `${allCards.length} Bilder`;
+    }
+  } catch(e) { alert('Fehler beim Löschen: ' + e.message); }
+});
+
+document.getElementById('confirmNo').addEventListener('click', () => {
+  document.getElementById('confirmModal').classList.remove('open');
+  pendingDelete = null;
+});
+
+// ── UPLOAD ──
+const uploadModal    = document.getElementById('uploadModal');
+const dropZone       = document.getElementById('dropZone');
+const fileInput      = document.getElementById('fileInput');
+const uploadQueue    = document.getElementById('uploadQueue');
+const startUploadBtn = document.getElementById('startUploadBtn');
+const uploadMsg      = document.getElementById('uploadMsg');
+
+let filesToUpload = [];
+
+document.getElementById('uploadBtn').addEventListener('click', () => {
+  uploadModal.classList.add('open');
+  resetUploadModal();
+});
+document.getElementById('closeUploadBtn').addEventListener('click', () => {
+  uploadModal.classList.remove('open');
+});
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  handleFiles([...e.dataTransfer.files]);
+});
+fileInput.addEventListener('change', () => handleFiles([...fileInput.files]));
+
+function handleFiles(files) {
+  filesToUpload = files.filter(f => f.type.startsWith('image/'));
+  renderQueue();
+}
+
+function renderQueue() {
+  uploadQueue.innerHTML = '';
+  filesToUpload.forEach((f, i) => {
+    const row = document.createElement('div');
+    row.className = 'queue-item';
+    row.id = `qi-${i}`;
+    row.innerHTML = `<span class="queue-item-name">${f.name}</span><span class="queue-item-status" id="qs-${i}">BEREIT</span>`;
+    uploadQueue.appendChild(row);
+  });
+  startUploadBtn.disabled = filesToUpload.length === 0;
+  uploadMsg.textContent = filesToUpload.length ? `${filesToUpload.length} Datei(en) ausgewählt` : '';
+}
+
+function resetUploadModal() {
+  filesToUpload = [];
+  uploadQueue.innerHTML = '';
+  fileInput.value = '';
+  startUploadBtn.disabled = true;
+  uploadMsg.textContent = '';
+}
+
+startUploadBtn.addEventListener('click', async () => {
+  if (!filesToUpload.length) return;
+  startUploadBtn.disabled = true;
+  document.getElementById('closeUploadBtn').disabled = true;
+
+  let ok = 0, fail = 0;
+
+  for (let i = 0; i < filesToUpload.length; i++) {
+    const file = filesToUpload[i];
+    const statusEl = document.getElementById(`qs-${i}`);
+    statusEl.textContent = 'LÄDT …';
+    statusEl.className = 'queue-item-status';
+
+    try {
+      const resource = await uploadToCloudinary(file);
+      statusEl.textContent = '✓ OK';
+      statusEl.className = 'queue-item-status ok';
+      addCard(resource);
+      ok++;
+    } catch(e) {
+      statusEl.textContent = '✕ FEHLER';
+      statusEl.className = 'queue-item-status err';
+      fail++;
+    }
+  }
+
+  counter.textContent = `${allCards.length} Bilder`;
+  visibleCards = [...allCards];
+  uploadMsg.textContent = `${ok} hochgeladen${fail ? ', ' + fail + ' fehlgeschlagen' : ''}.`;
+  document.getElementById('closeUploadBtn').disabled = false;
+  document.getElementById('closeUploadBtn').textContent = 'SCHLIESSEN';
+  filesToUpload = [];
+});
+
+async function uploadToCloudinary(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', UPLOAD_PRESET);
+  fd.append('folder', FOLDER);
+
+  const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+    method: 'POST',
+    body: fd
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Upload failed');
+  }
+  return await resp.json();
+}
+
+// ── LIGHTBOX ──
+const lightbox = document.getElementById('lightbox');
+const lbImg    = document.getElementById('lightboxImg');
+const lbLabel  = document.getElementById('lightboxLabel');
+const lbDlBtn  = document.getElementById('lbDlBtn');
+
+function openLightbox(card) {
+  currentIndex = visibleCards.indexOf(card);
+  showLb(currentIndex);
+  lightbox.classList.add('open');
+}
+function showLb(idx) {
+  const card = visibleCards[idx]; if (!card) return;
+  lbImg.src = card.dataset.src;
+  lbLabel.textContent = card.dataset.name;
+  lbDlBtn.onclick = () => downloadOne(card.dataset.src, card.dataset.name);
+}
+
+document.getElementById('lightboxClose').addEventListener('click', () => lightbox.classList.remove('open'));
+lightbox.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
+document.getElementById('lbPrev').addEventListener('click', e => {
+  e.stopPropagation();
+  currentIndex = (currentIndex - 1 + visibleCards.length) % visibleCards.length;
+  showLb(currentIndex);
+});
+document.getElementById('lbNext').addEventListener('click', e => {
+  e.stopPropagation();
+  currentIndex = (currentIndex + 1) % visibleCards.length;
+  showLb(currentIndex);
+});
+document.addEventListener('keydown', e => {
+  if (!lightbox.classList.contains('open')) return;
+  if (e.key === 'ArrowLeft')  { currentIndex=(currentIndex-1+visibleCards.length)%visibleCards.length; showLb(currentIndex); }
+  if (e.key === 'ArrowRight') { currentIndex=(currentIndex+1)%visibleCards.length; showLb(currentIndex); }
+  if (e.key === 'Escape') lightbox.classList.remove('open');
+});
+</script>
+</body>
+</html>
