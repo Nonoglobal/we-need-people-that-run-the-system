@@ -420,8 +420,10 @@
 <script>
 // ── CONFIG ──
 const CLOUD_NAME = 'dal67qskn';
-const UPLOAD_PRESET = 'gallery_unsigned'; // Du musst dieses Preset in Cloudinary anlegen! (siehe Anleitung unten)
+const UPLOAD_PRESET = 'gallery_unsigned'; // Muss in Cloudinary als "Unsigned" angelegt sein
 const FOLDER = 'gallery';
+const API_KEY = '962639543477177';
+const API_SECRET = 'Uk6KjIbFF_u7dWVhZEuOOc258Fw';
 
 // ── PASSWORDS ──
 const MAIN_PW   = "we need people to run the system";
@@ -456,26 +458,46 @@ pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); }
 
 // ── CLOUDINARY ──
 const CLOUDINARY_API = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}`;
+const API_KEY    = '962639543477177';
+const API_SECRET = 'Uk6KjIbFF_u7dWVhZEuOOc258Fw';
 
-// Load all images from Cloudinary via Search API (unsigned, using API key as header not needed for public resources)
-// We use the resource list endpoint with a fetch trick
+// We store the image list as a JSON file in Cloudinary itself (raw upload).
+// This avoids the CORS problem of calling the Admin API from the browser.
+const INDEX_PUBLIC_ID = `${FOLDER}/_index`;
+const INDEX_URL = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${INDEX_PUBLIC_ID}.json`;
+
 async function fetchCloudinaryImages() {
-  // Use Cloudinary's resource listing - we do a signed fetch via the Search API
-  // For unsigned listing we use next_cursor pagination with resource_type=image
-  const url = `${CLOUDINARY_API}/resources/image?max_results=500&prefix=${FOLDER}/&type=upload`;
-  
-  const apiKey = '962639543477177';
-  const apiSecret = 'Uk6KjIbFF_u7dWVhZEuOOc258Fw';
-  
-  const resp = await fetch(url, {
-    headers: {
-      'Authorization': 'Basic ' + btoa(`${apiKey}:${apiSecret}`)
-    }
-  });
-  
-  if (!resp.ok) throw new Error('Cloudinary fetch failed: ' + resp.status);
-  const data = await resp.json();
-  return data.resources || [];
+  // Load the index JSON — cache-busted so we always get the latest version
+  const resp = await fetch(INDEX_URL + '?t=' + Date.now());
+  if (!resp.ok) {
+    // No index yet — return empty list (first use)
+    if (resp.status === 404) return [];
+    throw new Error('Index laden fehlgeschlagen: ' + resp.status);
+  }
+  const list = await resp.json(); // array of { public_id, secure_url, original_filename }
+  return list;
+}
+
+async function saveIndex(list) {
+  // Upload the updated index as a raw JSON file to Cloudinary
+  const json = JSON.stringify(list);
+  const blob = new Blob([json], { type: 'application/json' });
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const strToSign = `folder=${FOLDER}&overwrite=true&public_id=${INDEX_PUBLIC_ID}&resource_type=raw&timestamp=${timestamp}${API_SECRET}`;
+  const signature = await sha1(strToSign);
+
+  const fd = new FormData();
+  fd.append('file', blob, '_index.json');
+  fd.append('public_id', INDEX_PUBLIC_ID);
+  fd.append('folder', FOLDER);
+  fd.append('overwrite', 'true');
+  fd.append('resource_type', 'raw');
+  fd.append('api_key', API_KEY);
+  fd.append('timestamp', timestamp);
+  fd.append('signature', signature);
+
+  await fetch(`${CLOUDINARY_API}/raw/upload`, { method: 'POST', body: fd });
 }
 
 async function deleteCloudinaryImage(publicId) {
@@ -538,10 +560,9 @@ async function buildGallery() {
     visibleCards = [...allCards];
   } catch(e) {
     loadingState.style.display = 'none';
-    loadingState.textContent = '';
     noResults.style.display = 'block';
-    noResults.textContent = 'Fehler beim Laden der Bilder.';
-    console.error(e);
+    noResults.textContent = 'Noch keine Bilder. Lade welche hoch!';
+    counter.textContent = '0 Bilder';
   }
 }
 
@@ -554,9 +575,9 @@ function getFullUrl(publicId) {
 
 function addCard(resource) {
   const publicId = resource.public_id;
-  const name = publicId.split('/').pop();
+  const name = resource.original_filename || publicId.split('/').pop();
   const thumbUrl = getThumbUrl(publicId);
-  const fullUrl  = getFullUrl(publicId);
+  const fullUrl  = resource.secure_url || getFullUrl(publicId);
 
   const card = document.createElement('div');
   card.className = 'card';
@@ -670,6 +691,11 @@ document.getElementById('confirmYes').addEventListener('click', async () => {
   try {
     const ok = await deleteCloudinaryImage(publicId);
     if (ok) {
+      // Update index
+      const current = await fetchCloudinaryImages().catch(() => []);
+      const updated = current.filter(r => r.public_id !== publicId);
+      await saveIndex(updated).catch(()=>{});
+
       const idx = allCards.indexOf(card);
       if (idx > -1) allCards.splice(idx, 1);
       const vi = visibleCards.indexOf(card);
@@ -744,6 +770,7 @@ startUploadBtn.addEventListener('click', async () => {
   document.getElementById('closeUploadBtn').disabled = true;
 
   let ok = 0, fail = 0;
+  const newResources = [];
 
   for (let i = 0; i < filesToUpload.length; i++) {
     const file = filesToUpload[i];
@@ -755,6 +782,7 @@ startUploadBtn.addEventListener('click', async () => {
       const resource = await uploadToCloudinary(file);
       statusEl.textContent = '✓ OK';
       statusEl.className = 'queue-item-status ok';
+      newResources.push(resource);
       addCard(resource);
       ok++;
     } catch(e) {
@@ -762,6 +790,17 @@ startUploadBtn.addEventListener('click', async () => {
       statusEl.className = 'queue-item-status err';
       fail++;
     }
+  }
+
+  // Update index
+  if (newResources.length > 0) {
+    const current = await fetchCloudinaryImages().catch(() => []);
+    const updated = [...current, ...newResources.map(r => ({
+      public_id: r.public_id,
+      secure_url: r.secure_url,
+      original_filename: r.original_filename
+    }))];
+    await saveIndex(updated).catch(()=>{});
   }
 
   counter.textContent = `${allCards.length} Bilder`;
