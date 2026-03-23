@@ -455,56 +455,42 @@ pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); }
 // ── CLOUDINARY ──
 const CLOUDINARY_API = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}`;
 
-// We store the image list as a JSON file in Cloudinary itself (raw upload).
-// This avoids the CORS problem of calling the Admin API from the browser.
-const INDEX_PUBLIC_ID = `${FOLDER}/_index`;
-const INDEX_URL = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${INDEX_PUBLIC_ID}.json`;
-
+// Use Cloudinary Search API (signed, called from browser)
+// This works without CORS issues because we sign the request
 async function fetchCloudinaryImages() {
-  // Load the index JSON — cache-busted so we always get the latest version
-  const resp = await fetch(INDEX_URL + '?t=' + Date.now());
-  if (!resp.ok) {
-    // No index yet — return empty list (first use)
-    if (resp.status === 404) return [];
-    throw new Error('Index laden fehlgeschlagen: ' + resp.status);
-  }
-  const list = await resp.json(); // array of { public_id, secure_url, original_filename }
-  return list;
-}
-
-async function saveIndex(list) {
-  // Upload the updated index as a raw JSON file to Cloudinary
-  const json = JSON.stringify(list);
-  const blob = new Blob([json], { type: 'application/json' });
-
   const timestamp = Math.floor(Date.now() / 1000);
-  const strToSign = `folder=${FOLDER}&overwrite=true&public_id=${INDEX_PUBLIC_ID}&resource_type=raw&timestamp=${timestamp}${API_SECRET}`;
+  const strToSign = `expression=folder=${FOLDER}&max_results=500&timestamp=${timestamp}${API_SECRET}`;
   const signature = await sha1(strToSign);
 
-  const fd = new FormData();
-  fd.append('file', blob, '_index.json');
-  fd.append('public_id', INDEX_PUBLIC_ID);
-  fd.append('folder', FOLDER);
-  fd.append('overwrite', 'true');
-  fd.append('resource_type', 'raw');
-  fd.append('api_key', API_KEY);
-  fd.append('timestamp', timestamp);
-  fd.append('signature', signature);
+  const resp = await fetch(`${CLOUDINARY_API}/resources/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      expression: `folder:${FOLDER}`,
+      max_results: 500,
+      api_key: API_KEY,
+      timestamp: timestamp,
+      signature: signature
+    })
+  });
 
-  await fetch(`${CLOUDINARY_API}/raw/upload`, { method: 'POST', body: fd });
+  if (!resp.ok) throw new Error('Fetch failed: ' + resp.status);
+  const data = await resp.json();
+  return data.resources || [];
 }
 
+async function saveIndex() { /* not needed with Search API */ }
+
 async function deleteCloudinaryImage(publicId) {
-  // For deletion from the browser we need a signed request
-  // We use the destroy endpoint with timestamp + signature
   const timestamp = Math.floor(Date.now() / 1000);
-  const strToSign = `public_id=${publicId}&timestamp=${timestamp}${API_SECRET}`;
+  // Signature string must be sorted alphabetically: public_id, timestamp
+  const strToSign = `public_id=${encodeURIComponent(publicId)}&timestamp=${timestamp}${API_SECRET}`;
   const signature = await sha1(strToSign);
 
   const fd = new FormData();
   fd.append('public_id', publicId);
   fd.append('api_key', API_KEY);
-  fd.append('timestamp', timestamp);
+  fd.append('timestamp', String(timestamp));
   fd.append('signature', signature);
 
   const resp = await fetch(`${CLOUDINARY_API}/image/destroy`, { method: 'POST', body: fd });
@@ -565,7 +551,7 @@ function getFullUrl(publicId) {
 
 function addCard(resource) {
   const publicId = resource.public_id;
-  const name = resource.original_filename || publicId.split('/').pop();
+  const name = resource.filename || resource.original_filename || publicId.split('/').pop();
   const thumbUrl = getThumbUrl(publicId);
   const fullUrl  = resource.secure_url || getFullUrl(publicId);
 
@@ -681,11 +667,6 @@ document.getElementById('confirmYes').addEventListener('click', async () => {
   try {
     const ok = await deleteCloudinaryImage(publicId);
     if (ok) {
-      // Update index
-      const current = await fetchCloudinaryImages().catch(() => []);
-      const updated = current.filter(r => r.public_id !== publicId);
-      await saveIndex(updated).catch(()=>{});
-
       const idx = allCards.indexOf(card);
       if (idx > -1) allCards.splice(idx, 1);
       const vi = visibleCards.indexOf(card);
@@ -782,16 +763,7 @@ startUploadBtn.addEventListener('click', async () => {
     }
   }
 
-  // Update index
-  if (newResources.length > 0) {
-    const current = await fetchCloudinaryImages().catch(() => []);
-    const updated = [...current, ...newResources.map(r => ({
-      public_id: r.public_id,
-      secure_url: r.secure_url,
-      original_filename: r.original_filename
-    }))];
-    await saveIndex(updated).catch(()=>{});
-  }
+  // Index is handled automatically via Search API
 
   counter.textContent = `${allCards.length} Bilder`;
   visibleCards = [...allCards];
