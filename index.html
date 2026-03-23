@@ -6,158 +6,114 @@
 <title>Galerie · Geschützt</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap');
-
   :root {
-    --bg: #0a0a0a;
-    --surface: #111;
-    --border: #1e1e1e;
-    --accent: #c8ff00;
-    --text: #e0e0e0;
-    --muted: #555;
-    --danger: #ff3c3c;
-    --col: 280px;
-    --gap: 10px;
+    --bg: #0a0a0a; --surface: #111; --border: #1e1e1e;
+    --accent: #c8ff00; --text: #e0e0e0; --muted: #555;
+    --danger: #ff3c3c; --col: 280px; --gap: 10px;
   }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Share Tech Mono',monospace; min-height:100vh; }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; min-height: 100vh; }
-
-  /* ── LOCK ── */
-  #lockScreen {
-    position: fixed; inset: 0; background: var(--bg);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999;
-  }
-  #lockScreen.hidden { display: none; }
-  .lock-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2rem,6vw,4.5rem); letter-spacing: .15em; color: var(--accent); margin-bottom: .25em; }
-  .lock-sub { font-size: .68rem; color: var(--muted); letter-spacing: .3em; text-transform: uppercase; margin-bottom: 3rem; }
-  .lock-box { background: var(--surface); border: 1px solid var(--border); padding: 2.5rem; width: min(420px,92vw); display: flex; flex-direction: column; gap: 1rem; }
-  .lock-label { font-size: .63rem; letter-spacing: .25em; color: var(--muted); text-transform: uppercase; margin-bottom: .25rem; }
-  #passwordInput {
-    background: #0d0d0d; border: 1px solid var(--border); color: var(--text);
-    font-family: 'Share Tech Mono', monospace; font-size: 1rem; padding: .75rem 1rem;
-    width: 100%; outline: none; transition: border-color .2s; letter-spacing: .1em;
-  }
-  #passwordInput:focus { border-color: var(--accent); }
-  #passwordInput.error { border-color: var(--danger); animation: shake .35s; }
+  #lockScreen { position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
+  #lockScreen.hidden { display:none; }
+  .lock-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(2rem,6vw,4.5rem); letter-spacing:.15em; color:var(--accent); margin-bottom:.25em; }
+  .lock-sub { font-size:.68rem; color:var(--muted); letter-spacing:.3em; text-transform:uppercase; margin-bottom:3rem; }
+  .lock-box { background:var(--surface); border:1px solid var(--border); padding:2.5rem; width:min(420px,92vw); display:flex; flex-direction:column; gap:1rem; }
+  .lock-label { font-size:.63rem; letter-spacing:.25em; color:var(--muted); text-transform:uppercase; margin-bottom:.25rem; }
+  #passwordInput { background:#0d0d0d; border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:1rem; padding:.75rem 1rem; width:100%; outline:none; transition:border-color .2s; letter-spacing:.1em; }
+  #passwordInput:focus { border-color:var(--accent); }
+  #passwordInput.error { border-color:var(--danger); animation:shake .35s; }
   @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
-  #unlockBtn {
-    background: var(--accent); color: #000; border: none; padding: .85rem;
-    font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; letter-spacing: .2em; cursor: pointer; width: 100%;
-  }
-  #unlockBtn:hover { opacity: .85; }
-  #lockMsg { font-size: .68rem; letter-spacing: .12em; min-height: 1.2em; text-align: center; }
-  .lock-footer { font-size: .56rem; color: #282828; text-align: center; letter-spacing: .1em; }
+  #unlockBtn { background:var(--accent); color:#000; border:none; padding:.85rem; font-family:'Bebas Neue',sans-serif; font-size:1.2rem; letter-spacing:.2em; cursor:pointer; width:100%; }
+  #unlockBtn:hover { opacity:.85; }
+  #lockMsg { font-size:.68rem; letter-spacing:.12em; min-height:1.2em; text-align:center; }
+  .lock-footer { font-size:.56rem; color:#282828; text-align:center; letter-spacing:.1em; }
 
-  /* ── GALLERY ── */
-  #gallery { display: none; }
-  #gallery.visible { display: block; }
-  header {
-    padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
-    position: sticky; top: 0; background: rgba(10,10,10,.96); backdrop-filter: blur(10px); z-index: 100;
-  }
-  header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 1.9rem; letter-spacing: .15em; color: var(--accent); }
-  #counter { font-size: .68rem; color: var(--muted); letter-spacing: .18em; }
-  #searchInput {
-    background: #0d0d0d; border: 1px solid var(--border); color: var(--text);
-    font-family: 'Share Tech Mono', monospace; font-size: .78rem; padding: .45rem .75rem;
-    outline: none; width: 150px; transition: border-color .2s;
-  }
-  #searchInput:focus { border-color: var(--accent); }
-  #searchInput::placeholder { color: var(--muted); }
-  .header-actions { margin-left: auto; display: flex; gap: .5rem; align-items: center; }
-  #uploadBtn {
-    background: var(--accent); color: #000; border: none;
-    font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: .15em;
-    cursor: pointer; padding: .45rem 1rem; white-space: nowrap;
-  }
-  #uploadBtn:hover { opacity: .85; }
-  #syncStatus { font-size: .6rem; color: var(--muted); letter-spacing: .1em; }
+  #gallery { display:none; }
+  #gallery.visible { display:block; }
+  header { padding:1.1rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:1rem; flex-wrap:wrap; position:sticky; top:0; background:rgba(10,10,10,.96); backdrop-filter:blur(10px); z-index:100; }
+  header h1 { font-family:'Bebas Neue',sans-serif; font-size:1.9rem; letter-spacing:.15em; color:var(--accent); }
+  #counter { font-size:.68rem; color:var(--muted); letter-spacing:.18em; }
+  #searchInput { background:#0d0d0d; border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:.78rem; padding:.45rem .75rem; outline:none; width:150px; transition:border-color .2s; }
+  #searchInput:focus { border-color:var(--accent); }
+  #searchInput::placeholder { color:var(--muted); }
+  .header-actions { margin-left:auto; display:flex; gap:.5rem; align-items:center; }
+  #uploadBtn { background:var(--accent); color:#000; border:none; font-family:'Bebas Neue',sans-serif; font-size:1rem; letter-spacing:.15em; cursor:pointer; padding:.45rem 1rem; white-space:nowrap; }
+  #uploadBtn:hover { opacity:.85; }
+  #syncStatus { font-size:.6rem; color:var(--muted); letter-spacing:.1em; }
 
-  /* ── UPLOAD MODAL ── */
-  #uploadModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 9000; align-items: center; justify-content: center; }
-  #uploadModal.open { display: flex; }
-  .upload-box { background: var(--surface); border: 1px solid var(--border); padding: 2.5rem; width: min(480px,94vw); display: flex; flex-direction: column; gap: 1.2rem; }
-  .upload-box h2 { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: .15em; color: var(--accent); }
-  #dropZone {
-    border: 2px dashed var(--border); padding: 2.5rem 1rem; text-align: center;
-    cursor: pointer; transition: border-color .2s, background .2s;
-    font-size: .72rem; color: var(--muted); letter-spacing: .15em;
-  }
-  #dropZone:hover, #dropZone.drag-over { border-color: var(--accent); background: rgba(200,255,0,.03); color: var(--accent); }
-  #fileInput { display: none; }
-  #uploadQueue { display: flex; flex-direction: column; gap: .5rem; max-height: 220px; overflow-y: auto; }
-  .queue-item { display: flex; align-items: center; gap: .6rem; font-size: .65rem; letter-spacing: .08em; }
-  .queue-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .queue-item-status { color: var(--muted); white-space: nowrap; min-width: 60px; text-align: right; }
-  .queue-item-status.ok { color: var(--accent); }
-  .queue-item-status.err { color: var(--danger); }
-  .upload-actions { display: flex; gap: .7rem; }
-  #startUploadBtn {
-    flex: 1; background: var(--accent); color: #000; border: none; padding: .75rem;
-    font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: .2em; cursor: pointer;
-  }
-  #startUploadBtn:disabled { opacity: .35; cursor: default; }
-  #closeUploadBtn {
-    background: none; border: 1px solid var(--border); color: var(--text);
-    font-family: 'Share Tech Mono', monospace; font-size: .75rem;
-    padding: .75rem 1rem; cursor: pointer; letter-spacing: .1em;
-  }
-  #closeUploadBtn:hover { border-color: var(--danger); color: var(--danger); }
-  #uploadMsg { font-size: .65rem; letter-spacing: .12em; color: var(--muted); min-height: 1em; text-align: center; }
+  #gistBanner { display:none; background:#161600; border-bottom:1px solid #444400; padding:1rem 1.5rem; font-size:.68rem; letter-spacing:.08em; line-height:2; }
+  #gistBanner strong { color:var(--accent); }
+  #gistIdDisplay { background:#0a0a00; border:1px solid var(--accent); padding:.2em .6em; color:var(--accent); cursor:pointer; font-size:.8rem; letter-spacing:.05em; }
+  #gistIdDisplay:hover { background:#1a1a00; }
 
-  /* ── MASONRY ── */
-  #masonryWrap { padding: var(--gap); }
-  #masonry { columns: var(--col); column-gap: var(--gap); }
+  #uploadModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:9000; align-items:center; justify-content:center; }
+  #uploadModal.open { display:flex; }
+  .upload-box { background:var(--surface); border:1px solid var(--border); padding:2.5rem; width:min(480px,94vw); display:flex; flex-direction:column; gap:1.2rem; }
+  .upload-box h2 { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:.15em; color:var(--accent); }
+  #dropZone { border:2px dashed var(--border); padding:2.5rem 1rem; text-align:center; cursor:pointer; transition:border-color .2s,background .2s; font-size:.72rem; color:var(--muted); letter-spacing:.15em; }
+  #dropZone:hover, #dropZone.drag-over { border-color:var(--accent); background:rgba(200,255,0,.03); color:var(--accent); }
+  #fileInput { display:none; }
+  #uploadQueue { display:flex; flex-direction:column; gap:.5rem; max-height:220px; overflow-y:auto; }
+  .queue-item { display:flex; align-items:center; gap:.6rem; font-size:.65rem; letter-spacing:.08em; }
+  .queue-item-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .queue-item-status { color:var(--muted); white-space:nowrap; min-width:60px; text-align:right; }
+  .queue-item-status.ok { color:var(--accent); }
+  .queue-item-status.err { color:var(--danger); }
+  .upload-actions { display:flex; gap:.7rem; }
+  #startUploadBtn { flex:1; background:var(--accent); color:#000; border:none; padding:.75rem; font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:.2em; cursor:pointer; }
+  #startUploadBtn:disabled { opacity:.35; cursor:default; }
+  #closeUploadBtn { background:none; border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:.75rem; padding:.75rem 1rem; cursor:pointer; letter-spacing:.1em; }
+  #closeUploadBtn:hover { border-color:var(--danger); color:var(--danger); }
+  #uploadMsg { font-size:.65rem; letter-spacing:.12em; color:var(--muted); min-height:1em; text-align:center; }
+
+  #masonryWrap { padding:var(--gap); }
+  #masonry { columns:var(--col); column-gap:var(--gap); }
   @media (max-width:600px) { :root { --col:160px; --gap:6px; } }
-  .card { break-inside: avoid; margin-bottom: var(--gap); position: relative; overflow: hidden; cursor: pointer; background: var(--surface); }
-  .card img { width: 100%; height: auto; display: block; opacity: 0; transition: opacity .35s; }
-  .card img.loaded { opacity: 1; }
-  .card-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0); transition: background .2s; display: flex; flex-direction: column; justify-content: flex-end; }
-  .card:hover .card-overlay { background: rgba(0,0,0,.5); }
-  .card-bar { padding: .5rem .6rem; display: flex; justify-content: space-between; align-items: center; opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; font-size: .6rem; letter-spacing: .1em; color: #ccc; gap: .4rem; }
-  .card:hover .card-bar { opacity: 1; transform: translateY(0); }
-  .card-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .card-btn { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); color: #fff; font-family: 'Share Tech Mono', monospace; font-size: .6rem; padding: .2rem .5rem; cursor: pointer; transition: border-color .15s, color .15s; white-space: nowrap; }
-  .card-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .card-btn.del:hover { border-color: var(--danger); color: var(--danger); }
-
-  #loadingState { padding: 4rem; text-align: center; color: var(--muted); font-size: .75rem; letter-spacing: .3em; }
-  #loadingState .dot { animation: blink 1.2s infinite; }
-  #loadingState .dot:nth-child(2) { animation-delay: .2s; }
-  #loadingState .dot:nth-child(3) { animation-delay: .4s; }
+  .card { break-inside:avoid; margin-bottom:var(--gap); position:relative; overflow:hidden; cursor:pointer; background:var(--surface); }
+  .card img { width:100%; height:auto; display:block; opacity:0; transition:opacity .35s; }
+  .card img.loaded { opacity:1; }
+  .card-overlay { position:absolute; inset:0; background:rgba(0,0,0,0); transition:background .2s; display:flex; flex-direction:column; justify-content:flex-end; }
+  .card:hover .card-overlay { background:rgba(0,0,0,.5); }
+  .card-bar { padding:.5rem .6rem; display:flex; justify-content:space-between; align-items:center; opacity:0; transform:translateY(6px); transition:opacity .2s,transform .2s; font-size:.6rem; letter-spacing:.1em; color:#ccc; gap:.4rem; }
+  .card:hover .card-bar { opacity:1; transform:translateY(0); }
+  .card-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); color:#fff; font-family:'Share Tech Mono',monospace; font-size:.6rem; padding:.2rem .5rem; cursor:pointer; transition:border-color .15s,color .15s; white-space:nowrap; }
+  .card-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .card-btn.del:hover { border-color:var(--danger); color:var(--danger); }
+  #loadingState { padding:4rem; text-align:center; color:var(--muted); font-size:.75rem; letter-spacing:.3em; }
+  #loadingState .dot { animation:blink 1.2s infinite; }
+  #loadingState .dot:nth-child(2) { animation-delay:.2s; }
+  #loadingState .dot:nth-child(3) { animation-delay:.4s; }
   @keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
-  #noResults { display: none; padding: 4rem; text-align: center; color: var(--muted); font-size: .8rem; letter-spacing: .3em; }
+  #noResults { display:none; padding:4rem; text-align:center; color:var(--muted); font-size:.8rem; letter-spacing:.3em; }
 
-  /* ── LIGHTBOX ── */
-  #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.96); z-index: 8888; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; }
-  #lightbox.open { display: flex; }
-  #lightboxImg { max-width: 90vw; max-height: 82vh; object-fit: contain; border: 1px solid var(--border); }
-  .lb-bar { display: flex; align-items: center; gap: 1.2rem; }
-  #lightboxLabel { font-size: .68rem; letter-spacing: .22em; color: var(--muted); }
-  #lbDlBtn, #lightboxClose { background: none; border: 1px solid var(--border); color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: .68rem; padding: .35rem .9rem; cursor: pointer; letter-spacing: .12em; transition: border-color .15s, color .15s; }
-  #lbDlBtn:hover { border-color: var(--accent); color: var(--accent); }
-  #lightboxClose { position: absolute; top: 1.2rem; right: 1.2rem; }
-  #lightboxClose:hover { border-color: var(--accent); color: var(--accent); }
-  .lb-nav { position: absolute; top: 50%; transform: translateY(-50%); background: none; border: 1px solid var(--border); color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; padding: .5rem .9rem; cursor: pointer; transition: border-color .15s, color .15s; }
-  .lb-nav:hover { border-color: var(--accent); color: var(--accent); }
-  #lbPrev { left: 1.2rem; } #lbNext { right: 1.2rem; }
+  #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.96); z-index:8888; align-items:center; justify-content:center; flex-direction:column; gap:1rem; }
+  #lightbox.open { display:flex; }
+  #lightboxImg { max-width:90vw; max-height:82vh; object-fit:contain; border:1px solid var(--border); }
+  .lb-bar { display:flex; align-items:center; gap:1.2rem; }
+  #lightboxLabel { font-size:.68rem; letter-spacing:.22em; color:var(--muted); }
+  #lbDlBtn, #lightboxClose { background:none; border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:.68rem; padding:.35rem .9rem; cursor:pointer; letter-spacing:.12em; transition:border-color .15s,color .15s; }
+  #lbDlBtn:hover { border-color:var(--accent); color:var(--accent); }
+  #lightboxClose { position:absolute; top:1.2rem; right:1.2rem; }
+  #lightboxClose:hover { border-color:var(--accent); color:var(--accent); }
+  .lb-nav { position:absolute; top:50%; transform:translateY(-50%); background:none; border:1px solid var(--border); color:var(--text); font-family:'Bebas Neue',sans-serif; font-size:1.5rem; padding:.5rem .9rem; cursor:pointer; transition:border-color .15s,color .15s; }
+  .lb-nav:hover { border-color:var(--accent); color:var(--accent); }
+  #lbPrev { left:1.2rem; } #lbNext { right:1.2rem; }
 
-  /* ── CONFIRM ── */
-  #confirmModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 9500; align-items: center; justify-content: center; }
-  #confirmModal.open { display: flex; }
-  .confirm-box { background: var(--surface); border: 1px solid var(--border); padding: 2rem; width: min(360px,92vw); display: flex; flex-direction: column; gap: 1.2rem; }
-  .confirm-box p { font-size: .75rem; letter-spacing: .1em; line-height: 1.7; }
-  .confirm-box strong { color: var(--accent); }
-  .confirm-actions { display: flex; gap: .7rem; }
-  #confirmYes { flex: 1; background: var(--danger); color: #fff; border: none; padding: .7rem; font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: .15em; cursor: pointer; }
-  #confirmNo { flex: 1; background: none; border: 1px solid var(--border); color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: .72rem; padding: .7rem; cursor: pointer; letter-spacing: .1em; }
-  #confirmNo:hover { border-color: var(--accent); }
+  #confirmModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:9500; align-items:center; justify-content:center; }
+  #confirmModal.open { display:flex; }
+  .confirm-box { background:var(--surface); border:1px solid var(--border); padding:2rem; width:min(360px,92vw); display:flex; flex-direction:column; gap:1.2rem; }
+  .confirm-box p { font-size:.75rem; letter-spacing:.1em; line-height:1.7; }
+  .confirm-box strong { color:var(--accent); }
+  .confirm-actions { display:flex; gap:.7rem; }
+  #confirmYes { flex:1; background:var(--danger); color:#fff; border:none; padding:.7rem; font-family:'Bebas Neue',sans-serif; font-size:1rem; letter-spacing:.15em; cursor:pointer; }
+  #confirmNo { flex:1; background:none; border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:.72rem; padding:.7rem; cursor:pointer; letter-spacing:.1em; }
+  #confirmNo:hover { border-color:var(--accent); }
 </style>
 </head>
 <body>
 
-<!-- LOCK -->
 <div id="lockScreen">
   <div class="lock-title">GESCHÜTZTE ZONE</div>
   <div class="lock-sub">Zugang beschränkt · Passwort eingeben</div>
@@ -168,11 +124,10 @@
     </div>
     <button id="unlockBtn">EINLOGGEN</button>
     <div id="lockMsg"></div>
-    <div class="lock-footer">© Autorisation v3.0 · Unerlaubter Zugriff verboten</div>
+    <div class="lock-footer">© Autorisation v3.0</div>
   </div>
 </div>
 
-<!-- GALLERY -->
 <div id="gallery">
   <header>
     <h1>Galerie</h1>
@@ -183,6 +138,13 @@
       <button id="uploadBtn">⬆ Hochladen</button>
     </div>
   </header>
+
+  <div id="gistBanner">
+    ⚠ <strong>EINMALIG:</strong> Gist-ID wurde erstellt →
+    <span id="gistIdDisplay" title="Klicken zum Kopieren"></span>
+    ← Bitte diese ID an den Entwickler schicken, damit sie fest eingebaut wird. Erst dann bleiben Bilder dauerhaft gespeichert.
+  </div>
+
   <div id="masonryWrap">
     <div id="loadingState">LADE BILDER<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
     <div id="masonry"></div>
@@ -190,7 +152,6 @@
   </div>
 </div>
 
-<!-- UPLOAD MODAL -->
 <div id="uploadModal">
   <div class="upload-box">
     <h2>Bilder hochladen</h2>
@@ -208,7 +169,6 @@
   </div>
 </div>
 
-<!-- LIGHTBOX -->
 <div id="lightbox">
   <button id="lightboxClose">✕ Schließen</button>
   <button class="lb-nav" id="lbPrev">‹</button>
@@ -220,7 +180,6 @@
   <button class="lb-nav" id="lbNext">›</button>
 </div>
 
-<!-- CONFIRM DELETE -->
 <div id="confirmModal">
   <div class="confirm-box">
     <p>Bild <strong id="confirmName"></strong> wirklich löschen?<br>Diese Aktion kann nicht rückgängig gemacht werden.</p>
@@ -232,34 +191,26 @@
 </div>
 
 <script>
-// ─────────────────────────────────────────
-//  CONFIG  — alles hier eingetragen
-// ─────────────────────────────────────────
-const MAIN_PW       = '010999';
-const IMGBB_KEY     = 'fa616da4199614d55ab9b17c119ee2c7';
-const GITHUB_TOKEN  = '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';
-const GIST_FILENAME = 'gallery_images.json';
+// ── CONFIG — hier alles fest eingetragen ──
+const MAIN_PW      = '010999';
+const IMGBB_KEY    = 'fa616da4199614d55ab9b17c119ee2c7';
+const GITHUB_TOKEN = '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';
+const GIST_FILE    = 'gallery_images.json';
 
-// Gist ID — wird beim ersten Start automatisch erstellt und gespeichert
-let GIST_ID = localStorage.getItem('gallery_gist_id') || '';
+// Gist-ID: wird beim ersten Start automatisch erstellt und hier fest gespeichert.
+// Sobald die ID bekannt ist, wird sie hier eingetragen und die Seite neu deployed.
+const HARDCODED_GIST_ID = ''; // ← wird nach erstem Start befüllt
 
-// ─────────────────────────────────────────
-//  STATE
-// ─────────────────────────────────────────
-let allImages    = [];  // [{ id, name, url, thumb }]
-let allCards     = [];
-let visibleCards = [];
-let currentIndex = 0;
+// ── STATE ──
+let GIST_ID = HARDCODED_GIST_ID;
+let allImages = [], allCards = [], visibleCards = [], currentIndex = 0;
 
-// ─────────────────────────────────────────
-//  LOCK
-// ─────────────────────────────────────────
+// ── LOCK ──
 document.getElementById('unlockBtn').addEventListener('click', tryUnlock);
-document.getElementById('passwordInput').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+document.getElementById('passwordInput').addEventListener('keydown', e => { if(e.key==='Enter') tryUnlock(); });
 
 function tryUnlock() {
-  const pw = document.getElementById('passwordInput').value;
-  if (pw === MAIN_PW) {
+  if (document.getElementById('passwordInput').value === MAIN_PW) {
     document.getElementById('lockScreen').classList.add('hidden');
     document.getElementById('gallery').classList.add('visible');
     startGallery();
@@ -273,73 +224,88 @@ function tryUnlock() {
   }
 }
 
-// ─────────────────────────────────────────
-//  GIST  (persistenter Speicher)
-// ─────────────────────────────────────────
-const GH_HEADERS = {
-  'Authorization': `token ${GITHUB_TOKEN}`,
-  'Content-Type': 'application/json'
-};
+// ── GIST ──
+const GH = { 'Authorization': `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' };
 
 async function gistLoad() {
   setSyncStatus('Lade …');
   try {
+    // 1. Hardcoded ID (nach erstem Setup)
     if (GIST_ID) {
-      const r = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers: GH_HEADERS });
+      const r = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers: GH });
       if (r.ok) {
-        const data = await r.json();
-        const raw  = data.files?.[GIST_FILENAME]?.content || '[]';
+        const d = await r.json();
         setSyncStatus('');
-        return JSON.parse(raw);
+        return JSON.parse(d.files?.[GIST_FILE]?.content || '[]');
       }
     }
-    // No Gist yet — create one
+
+    // 2. Gespeicherte ID aus localStorage
+    const saved = localStorage.getItem('gist_id');
+    if (saved) {
+      GIST_ID = saved;
+      const r = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers: GH });
+      if (r.ok) {
+        const d = await r.json();
+        setSyncStatus('');
+        showBanner(GIST_ID);
+        return JSON.parse(d.files?.[GIST_FILE]?.content || '[]');
+      }
+    }
+
+    // 3. Neues Gist erstellen
+    setSyncStatus('Erstelle Speicher …');
     const r = await fetch('https://api.github.com/gists', {
-      method: 'POST',
-      headers: GH_HEADERS,
+      method: 'POST', headers: GH,
       body: JSON.stringify({
-        description: 'Gallery image list',
+        description: 'Galerie Bildliste',
         public: false,
-        files: { [GIST_FILENAME]: { content: '[]' } }
+        files: { [GIST_FILE]: { content: '[]' } }
       })
     });
-    const data = await r.json();
-    GIST_ID = data.id;
-    localStorage.setItem('gallery_gist_id', GIST_ID);
+    if (!r.ok) throw new Error('Gist create failed: ' + r.status);
+    const d = await r.json();
+    GIST_ID = d.id;
+    localStorage.setItem('gist_id', GIST_ID);
+    showBanner(GIST_ID);
     setSyncStatus('');
     return [];
   } catch(e) {
-    setSyncStatus('⚠ Sync-Fehler');
-    console.error('Gist load error:', e);
+    setSyncStatus('⚠ Fehler beim Laden');
+    console.error('gistLoad error:', e);
     return [];
   }
 }
 
 async function gistSave(images) {
+  if (!GIST_ID) return;
   setSyncStatus('Speichere …');
   try {
-    await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-      method: 'PATCH',
-      headers: GH_HEADERS,
-      body: JSON.stringify({
-        files: { [GIST_FILENAME]: { content: JSON.stringify(images, null, 2) } }
-      })
+    const r = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      method: 'PATCH', headers: GH,
+      body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(images, null, 2) } } })
     });
+    if (!r.ok) throw new Error('Save failed: ' + r.status);
     setSyncStatus('✓ Gespeichert');
-    setTimeout(() => setSyncStatus(''), 2000);
+    setTimeout(() => setSyncStatus(''), 2500);
   } catch(e) {
     setSyncStatus('⚠ Speicherfehler');
-    console.error('Gist save error:', e);
+    console.error('gistSave error:', e);
   }
 }
 
-function setSyncStatus(txt) {
-  document.getElementById('syncStatus').textContent = txt;
+function showBanner(id) {
+  const el = document.getElementById('gistIdDisplay');
+  el.textContent = id;
+  el.onclick = () => {
+    navigator.clipboard.writeText(id).then(() => { el.textContent = '✓ Kopiert!'; setTimeout(() => el.textContent = id, 1500); }).catch(()=>{});
+  };
+  document.getElementById('gistBanner').style.display = 'block';
 }
 
-// ─────────────────────────────────────────
-//  GALLERY
-// ─────────────────────────────────────────
+function setSyncStatus(t) { document.getElementById('syncStatus').textContent = t; }
+
+// ── GALLERY ──
 async function startGallery() {
   document.getElementById('loadingState').style.display = 'block';
   allImages = await gistLoad();
@@ -349,17 +315,12 @@ async function startGallery() {
 
 function renderAll() {
   const masonry = document.getElementById('masonry');
-  masonry.innerHTML = '';
-  allCards = [];
-
-  if (allImages.length === 0) {
+  masonry.innerHTML = ''; allCards = [];
+  if (!allImages.length) {
     document.getElementById('noResults').style.display = 'block';
-    document.getElementById('noResults').textContent = 'Noch keine Bilder · Lade welche hoch!';
     document.getElementById('counter').textContent = '0 Bilder';
-    visibleCards = [];
-    return;
+    visibleCards = []; return;
   }
-
   document.getElementById('noResults').style.display = 'none';
   allImages.forEach(img => addCard(img, false));
   document.getElementById('counter').textContent = `${allImages.length} Bilder`;
@@ -368,37 +329,23 @@ function renderAll() {
 
 function addCard(imgData, prepend = true) {
   const masonry = document.getElementById('masonry');
-  const card    = document.createElement('div');
+  const card = document.createElement('div');
   card.className = 'card';
   card.dataset.src  = imgData.url;
   card.dataset.name = imgData.name;
   card.dataset.id   = imgData.id;
 
   const img = document.createElement('img');
-  img.src     = imgData.thumb || imgData.url;
-  img.alt     = imgData.name;
-  img.loading = 'lazy';
-  img.onload  = () => img.classList.add('loaded');
+  img.src = imgData.thumb || imgData.url; img.alt = imgData.name; img.loading = 'lazy';
+  img.onload = () => img.classList.add('loaded');
 
-  const overlay  = document.createElement('div');
-  overlay.className = 'card-overlay';
-  const bar = document.createElement('div');
-  bar.className = 'card-bar';
+  const overlay = document.createElement('div'); overlay.className = 'card-overlay';
+  const bar = document.createElement('div'); bar.className = 'card-bar';
+  const nameSpan = document.createElement('span'); nameSpan.className = 'card-name'; nameSpan.textContent = imgData.name;
 
-  const nameSpan = document.createElement('span');
-  nameSpan.className = 'card-name';
-  nameSpan.textContent = imgData.name;
-
-  const dlBtn = document.createElement('button');
-  dlBtn.className = 'card-btn';
-  dlBtn.textContent = '⬇';
-  dlBtn.title = 'Herunterladen';
+  const dlBtn = document.createElement('button'); dlBtn.className = 'card-btn'; dlBtn.textContent = '⬇';
   dlBtn.addEventListener('click', e => { e.stopPropagation(); downloadOne(imgData.url, imgData.name); });
-
-  const delBtn = document.createElement('button');
-  delBtn.className = 'card-btn del';
-  delBtn.textContent = '✕';
-  delBtn.title = 'Löschen';
+  const delBtn = document.createElement('button'); delBtn.className = 'card-btn del'; delBtn.textContent = '✕';
   delBtn.addEventListener('click', e => { e.stopPropagation(); askDelete(card, imgData); });
 
   bar.append(nameSpan, dlBtn, delBtn);
@@ -406,87 +353,58 @@ function addCard(imgData, prepend = true) {
   card.append(img, overlay);
   card.addEventListener('click', () => openLightbox(card));
 
-  if (prepend) {
-    masonry.prepend(card);
-    allCards.unshift(card);
-  } else {
-    masonry.append(card);
-    allCards.push(card);
-  }
+  if (prepend) { masonry.prepend(card); allCards.unshift(card); }
+  else         { masonry.append(card);  allCards.push(card); }
 }
 
-// ─────────────────────────────────────────
-//  SEARCH
-// ─────────────────────────────────────────
+// ── SEARCH ──
 document.getElementById('searchInput').addEventListener('input', function() {
   const q = this.value.trim().toLowerCase();
-  visibleCards = [];
-  let n = 0;
+  visibleCards = []; let n = 0;
   allCards.forEach(c => {
     const show = !q || c.dataset.name.toLowerCase().includes(q);
     c.style.display = show ? '' : 'none';
     if (show) { visibleCards.push(c); n++; }
   });
   document.getElementById('counter').textContent = q ? `${n} von ${allCards.length}` : `${allCards.length} Bilder`;
-  document.getElementById('noResults').style.display = n === 0 ? 'block' : 'none';
+  document.getElementById('noResults').style.display = n===0 ? 'block':'none';
 });
 
-// ─────────────────────────────────────────
-//  DOWNLOAD
-// ─────────────────────────────────────────
+// ── DOWNLOAD ──
 function downloadOne(src, name) {
-  const a = document.createElement('a');
-  a.href = src; a.download = name;
+  const a = document.createElement('a'); a.href = src; a.download = name;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-// ─────────────────────────────────────────
-//  DELETE
-// ─────────────────────────────────────────
+// ── DELETE ──
 let pendingDelete = null;
-
 function askDelete(card, imgData) {
   pendingDelete = { card, imgData };
   document.getElementById('confirmName').textContent = imgData.name;
   document.getElementById('confirmModal').classList.add('open');
 }
-
 document.getElementById('confirmYes').addEventListener('click', async () => {
   document.getElementById('confirmModal').classList.remove('open');
   if (!pendingDelete) return;
-  const { card, imgData } = pendingDelete;
-  pendingDelete = null;
-
+  const { card, imgData } = pendingDelete; pendingDelete = null;
   allImages = allImages.filter(i => i.id !== imgData.id);
   await gistSave(allImages);
-
-  const ci = allCards.indexOf(card);
-  if (ci > -1) allCards.splice(ci, 1);
-  const vi = visibleCards.indexOf(card);
-  if (vi > -1) visibleCards.splice(vi, 1);
+  const ci = allCards.indexOf(card); if(ci>-1) allCards.splice(ci,1);
+  const vi = visibleCards.indexOf(card); if(vi>-1) visibleCards.splice(vi,1);
   card.remove();
   document.getElementById('counter').textContent = `${allCards.length} Bilder`;
-  if (allCards.length === 0) document.getElementById('noResults').style.display = 'block';
+  if (!allCards.length) document.getElementById('noResults').style.display = 'block';
 });
-
 document.getElementById('confirmNo').addEventListener('click', () => {
-  document.getElementById('confirmModal').classList.remove('open');
-  pendingDelete = null;
+  document.getElementById('confirmModal').classList.remove('open'); pendingDelete = null;
 });
 
-// ─────────────────────────────────────────
-//  UPLOAD
-// ─────────────────────────────────────────
-const uploadModal    = document.getElementById('uploadModal');
-const dropZone       = document.getElementById('dropZone');
-const fileInput      = document.getElementById('fileInput');
-const uploadQueue    = document.getElementById('uploadQueue');
-const startUploadBtn = document.getElementById('startUploadBtn');
-const uploadMsg      = document.getElementById('uploadMsg');
+// ── UPLOAD ──
 let filesToUpload = [];
-
-document.getElementById('uploadBtn').addEventListener('click', () => { uploadModal.classList.add('open'); resetUploadModal(); });
-document.getElementById('closeUploadBtn').addEventListener('click', () => uploadModal.classList.remove('open'));
+document.getElementById('uploadBtn').addEventListener('click', () => { document.getElementById('uploadModal').classList.add('open'); resetUploadModal(); });
+document.getElementById('closeUploadBtn').addEventListener('click', () => document.getElementById('uploadModal').classList.remove('open'));
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
@@ -495,72 +413,56 @@ fileInput.addEventListener('change', () => handleFiles([...fileInput.files]));
 
 function handleFiles(files) {
   filesToUpload = files.filter(f => f.type.startsWith('image/'));
-  renderQueue();
-}
-function renderQueue() {
-  uploadQueue.innerHTML = '';
+  const q = document.getElementById('uploadQueue'); q.innerHTML = '';
   filesToUpload.forEach((f, i) => {
-    const row = document.createElement('div');
-    row.className = 'queue-item';
+    const row = document.createElement('div'); row.className = 'queue-item';
     row.innerHTML = `<span class="queue-item-name">${f.name}</span><span class="queue-item-status" id="qs-${i}">BEREIT</span>`;
-    uploadQueue.appendChild(row);
+    q.appendChild(row);
   });
-  startUploadBtn.disabled = filesToUpload.length === 0;
-  uploadMsg.textContent = filesToUpload.length ? `${filesToUpload.length} Datei(en) ausgewählt` : '';
+  document.getElementById('startUploadBtn').disabled = !filesToUpload.length;
+  document.getElementById('uploadMsg').textContent = filesToUpload.length ? `${filesToUpload.length} Datei(en)` : '';
 }
 function resetUploadModal() {
-  filesToUpload = [];
-  uploadQueue.innerHTML = '';
-  fileInput.value = '';
-  startUploadBtn.disabled = true;
-  uploadMsg.textContent = '';
+  filesToUpload = []; document.getElementById('uploadQueue').innerHTML = '';
+  fileInput.value = ''; document.getElementById('startUploadBtn').disabled = true;
+  document.getElementById('uploadMsg').textContent = '';
   document.getElementById('closeUploadBtn').textContent = 'ABBRECHEN';
   document.getElementById('closeUploadBtn').disabled = false;
 }
 
-startUploadBtn.addEventListener('click', async () => {
+document.getElementById('startUploadBtn').addEventListener('click', async () => {
   if (!filesToUpload.length) return;
-  startUploadBtn.disabled = true;
+  document.getElementById('startUploadBtn').disabled = true;
   document.getElementById('closeUploadBtn').disabled = true;
-
   let ok = 0, fail = 0;
 
   for (let i = 0; i < filesToUpload.length; i++) {
-    const file     = filesToUpload[i];
+    const file = filesToUpload[i];
     const statusEl = document.getElementById(`qs-${i}`);
-    statusEl.textContent = 'LÄDT …';
-    statusEl.className   = 'queue-item-status';
-
+    statusEl.textContent = 'LÄDT …'; statusEl.className = 'queue-item-status';
     try {
-      const result  = await uploadToImgBB(file);
+      const result = await uploadToImgBB(file);
       const imgData = {
         id:    result.data.id,
         name:  file.name,
         url:   result.data.url,
         thumb: result.data.thumb?.url || result.data.medium?.url || result.data.url
       };
-
       allImages.push(imgData);
       addCard(imgData, true);
       visibleCards = [...allCards];
       document.getElementById('counter').textContent = `${allCards.length} Bilder`;
       document.getElementById('noResults').style.display = 'none';
-
-      statusEl.textContent = '✓ OK';
-      statusEl.className   = 'queue-item-status ok';
+      statusEl.textContent = '✓ OK'; statusEl.className = 'queue-item-status ok';
       ok++;
     } catch(e) {
-      statusEl.textContent = '✕ FEHLER';
-      statusEl.className   = 'queue-item-status err';
-      console.error('Upload error:', e.message);
-      fail++;
+      statusEl.textContent = '✕ FEHLER'; statusEl.className = 'queue-item-status err';
+      console.error(e); fail++;
     }
   }
 
-  // Save updated list to Gist once after all uploads
   if (ok > 0) await gistSave(allImages);
-
-  uploadMsg.textContent = `${ok} hochgeladen${fail ? ', ' + fail + ' fehlgeschlagen' : ''}.`;
+  document.getElementById('uploadMsg').textContent = `${ok} hochgeladen${fail ? ', '+fail+' fehlgeschlagen':''}`;
   document.getElementById('closeUploadBtn').disabled = false;
   document.getElementById('closeUploadBtn').textContent = 'SCHLIESSEN';
   filesToUpload = [];
@@ -569,58 +471,38 @@ startUploadBtn.addEventListener('click', async () => {
 async function uploadToImgBB(file) {
   const b64 = await new Promise((res, rej) => {
     const r = new FileReader();
-    r.onload  = () => res(r.result.split(',')[1]);
+    r.onload = () => res(r.result.split(',')[1]);
     r.onerror = () => rej(new Error('Lesefehler'));
     r.readAsDataURL(file);
   });
-
   const fd = new FormData();
   fd.append('key', IMGBB_KEY);
   fd.append('image', b64);
   fd.append('name', file.name.replace(/\.[^/.]+$/, ''));
-
   const resp = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: fd });
   const data = await resp.json();
   if (!data.success) throw new Error(data.error?.message || `HTTP ${resp.status}`);
   return data;
 }
 
-// ─────────────────────────────────────────
-//  LIGHTBOX
-// ─────────────────────────────────────────
+// ── LIGHTBOX ──
 const lightbox = document.getElementById('lightbox');
-const lbImg    = document.getElementById('lightboxImg');
-const lbLabel  = document.getElementById('lightboxLabel');
-
-function openLightbox(card) {
-  currentIndex = visibleCards.indexOf(card);
-  showLb(currentIndex);
-  lightbox.classList.add('open');
-}
+function openLightbox(card) { currentIndex = visibleCards.indexOf(card); showLb(currentIndex); lightbox.classList.add('open'); }
 function showLb(idx) {
-  const card = visibleCards[idx];
-  if (!card) return;
-  lbImg.src = card.dataset.src;
-  lbLabel.textContent = card.dataset.name;
+  const card = visibleCards[idx]; if(!card) return;
+  document.getElementById('lightboxImg').src = card.dataset.src;
+  document.getElementById('lightboxLabel').textContent = card.dataset.name;
   document.getElementById('lbDlBtn').onclick = () => downloadOne(card.dataset.src, card.dataset.name);
 }
 document.getElementById('lightboxClose').addEventListener('click', () => lightbox.classList.remove('open'));
-lightbox.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
-document.getElementById('lbPrev').addEventListener('click', e => {
-  e.stopPropagation();
-  currentIndex = (currentIndex - 1 + visibleCards.length) % visibleCards.length;
-  showLb(currentIndex);
-});
-document.getElementById('lbNext').addEventListener('click', e => {
-  e.stopPropagation();
-  currentIndex = (currentIndex + 1) % visibleCards.length;
-  showLb(currentIndex);
-});
+lightbox.addEventListener('click', e => { if(e.target===lightbox) lightbox.classList.remove('open'); });
+document.getElementById('lbPrev').addEventListener('click', e => { e.stopPropagation(); currentIndex=(currentIndex-1+visibleCards.length)%visibleCards.length; showLb(currentIndex); });
+document.getElementById('lbNext').addEventListener('click', e => { e.stopPropagation(); currentIndex=(currentIndex+1)%visibleCards.length; showLb(currentIndex); });
 document.addEventListener('keydown', e => {
   if (!lightbox.classList.contains('open')) return;
-  if (e.key === 'ArrowLeft')  { currentIndex=(currentIndex-1+visibleCards.length)%visibleCards.length; showLb(currentIndex); }
-  if (e.key === 'ArrowRight') { currentIndex=(currentIndex+1)%visibleCards.length; showLb(currentIndex); }
-  if (e.key === 'Escape') lightbox.classList.remove('open');
+  if (e.key==='ArrowLeft')  { currentIndex=(currentIndex-1+visibleCards.length)%visibleCards.length; showLb(currentIndex); }
+  if (e.key==='ArrowRight') { currentIndex=(currentIndex+1)%visibleCards.length; showLb(currentIndex); }
+  if (e.key==='Escape') lightbox.classList.remove('open');
 });
 </script>
 </body>
