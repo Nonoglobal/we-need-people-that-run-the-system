@@ -48,30 +48,6 @@
   #lockMsg { font-size: .68rem; letter-spacing: .12em; min-height: 1.2em; text-align: center; }
   .lock-footer { font-size: .56rem; color: #282828; text-align: center; letter-spacing: .1em; }
 
-  /* ── SETUP SCREEN ── */
-  #setupScreen {
-    position: fixed; inset: 0; background: var(--bg);
-    display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9998; padding: 2rem;
-  }
-  #setupScreen.show { display: flex; }
-  .setup-box { background: var(--surface); border: 1px solid var(--border); padding: 2.5rem; width: min(520px,96vw); display: flex; flex-direction: column; gap: 1.4rem; }
-  .setup-title { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: .15em; color: var(--accent); }
-  .setup-steps { font-size: .7rem; letter-spacing: .08em; line-height: 2; color: var(--text); }
-  .setup-steps a { color: var(--accent); }
-  .setup-steps code { background: #1a1a1a; padding: .1em .4em; color: var(--accent); }
-  #apiKeyInput {
-    background: #0d0d0d; border: 1px solid var(--border); color: var(--text);
-    font-family: 'Share Tech Mono', monospace; font-size: .9rem; padding: .75rem 1rem;
-    width: 100%; outline: none; transition: border-color .2s;
-  }
-  #apiKeyInput:focus { border-color: var(--accent); }
-  #saveKeyBtn {
-    background: var(--accent); color: #000; border: none; padding: .85rem;
-    font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: .2em; cursor: pointer;
-  }
-  #saveKeyBtn:hover { opacity: .85; }
-  #setupMsg { font-size: .65rem; letter-spacing: .1em; color: var(--danger); min-height: 1em; }
-
   /* ── GALLERY ── */
   #gallery { display: none; }
   #gallery.visible { display: block; }
@@ -96,12 +72,7 @@
     cursor: pointer; padding: .45rem 1rem; white-space: nowrap;
   }
   #uploadBtn:hover { opacity: .85; }
-  #changeKeyBtn {
-    background: none; border: 1px solid var(--border); color: var(--muted);
-    font-family: 'Share Tech Mono', monospace; font-size: .6rem; padding: .45rem .75rem;
-    cursor: pointer; letter-spacing: .1em; white-space: nowrap; transition: border-color .15s, color .15s;
-  }
-  #changeKeyBtn:hover { border-color: var(--accent); color: var(--accent); }
+  #syncStatus { font-size: .6rem; color: var(--muted); letter-spacing: .1em; }
 
   /* ── UPLOAD MODAL ── */
   #uploadModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 9000; align-items: center; justify-content: center; }
@@ -201,25 +172,6 @@
   </div>
 </div>
 
-<!-- SETUP (API KEY) -->
-<div id="setupScreen">
-  <div class="setup-box">
-    <div class="setup-title">ImgBB API Key einrichten</div>
-    <div class="setup-steps">
-      <b>3 Schritte, dauert 2 Minuten:</b><br><br>
-      1. Gehe zu <a href="https://imgbb.com" target="_blank">imgbb.com</a> → kostenlosen Account erstellen<br>
-      2. Gehe zu <a href="https://api.imgbb.com" target="_blank">api.imgbb.com</a> → API Key kopieren<br>
-      3. API Key hier einfügen und speichern ↓
-    </div>
-    <div>
-      <div class="lock-label">ImgBB API Key</div>
-      <input type="text" id="apiKeyInput" placeholder="dein_api_key_hier_einfügen" autocomplete="off" />
-    </div>
-    <button id="saveKeyBtn">SPEICHERN & STARTEN</button>
-    <div id="setupMsg"></div>
-  </div>
-</div>
-
 <!-- GALLERY -->
 <div id="gallery">
   <header>
@@ -227,8 +179,8 @@
     <span id="counter">—</span>
     <input type="text" id="searchInput" placeholder="Dateiname suchen …" />
     <div class="header-actions">
+      <span id="syncStatus"></span>
       <button id="uploadBtn">⬆ Hochladen</button>
-      <button id="changeKeyBtn">⚙ API Key</button>
     </div>
   </header>
   <div id="masonryWrap">
@@ -280,135 +232,155 @@
 </div>
 
 <script>
-// ── CONFIG ──
-const MAIN_PW    = "010999";
-const STORAGE_KEY_IMAGES  = 'gallery_images_v1';
-const STORAGE_KEY_APIKEY  = 'imgbb_api_key';
-const HARDCODED_API_KEY   = 'fa616da4199614d55ab9b17c119ee2c7';
+// ─────────────────────────────────────────
+//  CONFIG  — alles hier eingetragen
+// ─────────────────────────────────────────
+const MAIN_PW       = '010999';
+const IMGBB_KEY     = 'fa616da4199614d55ab9b17c119ee2c7';
+const GITHUB_TOKEN  = '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';
+const GIST_FILENAME = 'gallery_images.json';
 
-// ── STATE ──
-let apiKey       = '';
-let allImages    = [];   // { name, url, thumb, deleteUrl }
+// Gist ID — wird beim ersten Start automatisch erstellt und gespeichert
+let GIST_ID = localStorage.getItem('gallery_gist_id') || '';
+
+// ─────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────
+let allImages    = [];  // [{ id, name, url, thumb }]
 let allCards     = [];
 let visibleCards = [];
 let currentIndex = 0;
 
-// ── LOCK ──
-const lockScreen = document.getElementById('lockScreen');
-const pwInput    = document.getElementById('passwordInput');
-const lockMsg    = document.getElementById('lockMsg');
-
+// ─────────────────────────────────────────
+//  LOCK
+// ─────────────────────────────────────────
 document.getElementById('unlockBtn').addEventListener('click', tryUnlock);
-pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+document.getElementById('passwordInput').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
 
 function tryUnlock() {
-  if (pwInput.value === MAIN_PW) {
-    lockScreen.classList.add('hidden');
-    apiKey = HARDCODED_API_KEY;
-    localStorage.setItem(STORAGE_KEY_APIKEY, apiKey);
+  const pw = document.getElementById('passwordInput').value;
+  if (pw === MAIN_PW) {
+    document.getElementById('lockScreen').classList.add('hidden');
+    document.getElementById('gallery').classList.add('visible');
     startGallery();
   } else {
-    pwInput.classList.add('error');
-    lockMsg.style.color = 'var(--danger)';
-    lockMsg.textContent = 'Falsches Passwort.';
-    setTimeout(() => pwInput.classList.remove('error'), 400);
+    const inp = document.getElementById('passwordInput');
+    inp.classList.add('error');
+    const msg = document.getElementById('lockMsg');
+    msg.style.color = 'var(--danger)';
+    msg.textContent = 'Falsches Passwort.';
+    setTimeout(() => inp.classList.remove('error'), 400);
   }
 }
 
-// ── SETUP ──
-document.getElementById('saveKeyBtn').addEventListener('click', saveApiKey);
-document.getElementById('apiKeyInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveApiKey(); });
+// ─────────────────────────────────────────
+//  GIST  (persistenter Speicher)
+// ─────────────────────────────────────────
+const GH_HEADERS = {
+  'Authorization': `token ${GITHUB_TOKEN}`,
+  'Content-Type': 'application/json'
+};
 
-async function saveApiKey() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  const msg  = document.getElementById('setupMsg');
-  if (!key) { msg.textContent = 'Bitte einen API Key eingeben.'; return; }
-
-  msg.textContent = 'Prüfe Key …';
-  // Quick test upload with a tiny 1x1 pixel GIF
-  const testB64 = 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-  const fd = new FormData();
-  fd.append('key', key);
-  fd.append('image', testB64);
+async function gistLoad() {
+  setSyncStatus('Lade …');
   try {
-    const r = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: fd });
-    const d = await r.json();
-    if (d.success) {
-      localStorage.setItem(STORAGE_KEY_APIKEY, key);
-      apiKey = key;
-      document.getElementById('setupScreen').classList.remove('show');
-      msg.textContent = '';
-      startGallery();
-    } else {
-      msg.textContent = 'Ungültiger Key: ' + (d.error?.message || 'Fehler');
+    if (GIST_ID) {
+      const r = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers: GH_HEADERS });
+      if (r.ok) {
+        const data = await r.json();
+        const raw  = data.files?.[GIST_FILENAME]?.content || '[]';
+        setSyncStatus('');
+        return JSON.parse(raw);
+      }
     }
+    // No Gist yet — create one
+    const r = await fetch('https://api.github.com/gists', {
+      method: 'POST',
+      headers: GH_HEADERS,
+      body: JSON.stringify({
+        description: 'Gallery image list',
+        public: false,
+        files: { [GIST_FILENAME]: { content: '[]' } }
+      })
+    });
+    const data = await r.json();
+    GIST_ID = data.id;
+    localStorage.setItem('gallery_gist_id', GIST_ID);
+    setSyncStatus('');
+    return [];
   } catch(e) {
-    msg.textContent = 'Verbindungsfehler – bitte erneut versuchen.';
+    setSyncStatus('⚠ Sync-Fehler');
+    console.error('Gist load error:', e);
+    return [];
   }
 }
 
-document.getElementById('changeKeyBtn').addEventListener('click', () => {
-  document.getElementById('apiKeyInput').value = apiKey;
-  document.getElementById('setupMsg').textContent = '';
-  document.getElementById('setupScreen').classList.add('show');
-});
-
-// ── GALLERY ──
-function startGallery() {
-  document.getElementById('gallery').classList.add('visible');
-  loadStoredImages();
-  renderGallery();
-}
-
-function loadStoredImages() {
+async function gistSave(images) {
+  setSyncStatus('Speichere …');
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_IMAGES);
-    allImages = raw ? JSON.parse(raw) : [];
-  } catch(e) { allImages = []; }
+    await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      method: 'PATCH',
+      headers: GH_HEADERS,
+      body: JSON.stringify({
+        files: { [GIST_FILENAME]: { content: JSON.stringify(images, null, 2) } }
+      })
+    });
+    setSyncStatus('✓ Gespeichert');
+    setTimeout(() => setSyncStatus(''), 2000);
+  } catch(e) {
+    setSyncStatus('⚠ Speicherfehler');
+    console.error('Gist save error:', e);
+  }
 }
 
-function saveImages() {
-  localStorage.setItem(STORAGE_KEY_IMAGES, JSON.stringify(allImages));
+function setSyncStatus(txt) {
+  document.getElementById('syncStatus').textContent = txt;
 }
 
-function renderGallery() {
-  const masonry      = document.getElementById('masonry');
-  const loadingState = document.getElementById('loadingState');
-  const noResults    = document.getElementById('noResults');
+// ─────────────────────────────────────────
+//  GALLERY
+// ─────────────────────────────────────────
+async function startGallery() {
+  document.getElementById('loadingState').style.display = 'block';
+  allImages = await gistLoad();
+  document.getElementById('loadingState').style.display = 'none';
+  renderAll();
+}
 
-  loadingState.style.display = 'none';
+function renderAll() {
+  const masonry = document.getElementById('masonry');
   masonry.innerHTML = '';
   allCards = [];
 
   if (allImages.length === 0) {
-    noResults.style.display = 'block';
-    noResults.textContent = 'Noch keine Bilder · Lade welche hoch!';
+    document.getElementById('noResults').style.display = 'block';
+    document.getElementById('noResults').textContent = 'Noch keine Bilder · Lade welche hoch!';
     document.getElementById('counter').textContent = '0 Bilder';
+    visibleCards = [];
     return;
   }
 
-  noResults.style.display = 'none';
-  allImages.forEach(img => addCard(img));
+  document.getElementById('noResults').style.display = 'none';
+  allImages.forEach(img => addCard(img, false));
   document.getElementById('counter').textContent = `${allImages.length} Bilder`;
   visibleCards = [...allCards];
 }
 
-function addCard(imgData) {
+function addCard(imgData, prepend = true) {
   const masonry = document.getElementById('masonry');
   const card    = document.createElement('div');
   card.className = 'card';
-  card.dataset.src    = imgData.url;
-  card.dataset.name   = imgData.name;
-  card.dataset.delete = imgData.deleteUrl || '';
-  card.dataset.id     = imgData.id || '';
+  card.dataset.src  = imgData.url;
+  card.dataset.name = imgData.name;
+  card.dataset.id   = imgData.id;
 
   const img = document.createElement('img');
-  img.src = imgData.thumb || imgData.url;
-  img.alt = imgData.name;
+  img.src     = imgData.thumb || imgData.url;
+  img.alt     = imgData.name;
   img.loading = 'lazy';
-  img.onload = () => img.classList.add('loaded');
+  img.onload  = () => img.classList.add('loaded');
 
-  const overlay = document.createElement('div');
+  const overlay  = document.createElement('div');
   overlay.className = 'card-overlay';
   const bar = document.createElement('div');
   bar.className = 'card-bar';
@@ -433,11 +405,19 @@ function addCard(imgData) {
   overlay.append(bar);
   card.append(img, overlay);
   card.addEventListener('click', () => openLightbox(card));
-  masonry.prepend(card); // newest first
-  allCards.unshift(card);
+
+  if (prepend) {
+    masonry.prepend(card);
+    allCards.unshift(card);
+  } else {
+    masonry.append(card);
+    allCards.push(card);
+  }
 }
 
-// ── SEARCH ──
+// ─────────────────────────────────────────
+//  SEARCH
+// ─────────────────────────────────────────
 document.getElementById('searchInput').addEventListener('input', function() {
   const q = this.value.trim().toLowerCase();
   visibleCards = [];
@@ -451,14 +431,18 @@ document.getElementById('searchInput').addEventListener('input', function() {
   document.getElementById('noResults').style.display = n === 0 ? 'block' : 'none';
 });
 
-// ── DOWNLOAD ──
+// ─────────────────────────────────────────
+//  DOWNLOAD
+// ─────────────────────────────────────────
 function downloadOne(src, name) {
   const a = document.createElement('a');
   a.href = src; a.download = name;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-// ── DELETE ──
+// ─────────────────────────────────────────
+//  DELETE
+// ─────────────────────────────────────────
 let pendingDelete = null;
 
 function askDelete(card, imgData) {
@@ -473,23 +457,16 @@ document.getElementById('confirmYes').addEventListener('click', async () => {
   const { card, imgData } = pendingDelete;
   pendingDelete = null;
 
-  // Remove from local storage
   allImages = allImages.filter(i => i.id !== imgData.id);
-  saveImages();
+  await gistSave(allImages);
 
-  // Remove from DOM
   const ci = allCards.indexOf(card);
   if (ci > -1) allCards.splice(ci, 1);
   const vi = visibleCards.indexOf(card);
   if (vi > -1) visibleCards.splice(vi, 1);
   card.remove();
   document.getElementById('counter').textContent = `${allCards.length} Bilder`;
-  if (allCards.length === 0) {
-    document.getElementById('noResults').style.display = 'block';
-  }
-
-  // Note: ImgBB free API does not support deletion via API — images persist on ImgBB servers
-  // but are removed from this gallery's local index.
+  if (allCards.length === 0) document.getElementById('noResults').style.display = 'block';
 });
 
 document.getElementById('confirmNo').addEventListener('click', () => {
@@ -497,23 +474,19 @@ document.getElementById('confirmNo').addEventListener('click', () => {
   pendingDelete = null;
 });
 
-// ── UPLOAD ──
+// ─────────────────────────────────────────
+//  UPLOAD
+// ─────────────────────────────────────────
 const uploadModal    = document.getElementById('uploadModal');
 const dropZone       = document.getElementById('dropZone');
 const fileInput      = document.getElementById('fileInput');
 const uploadQueue    = document.getElementById('uploadQueue');
 const startUploadBtn = document.getElementById('startUploadBtn');
 const uploadMsg      = document.getElementById('uploadMsg');
-
 let filesToUpload = [];
 
-document.getElementById('uploadBtn').addEventListener('click', () => {
-  uploadModal.classList.add('open');
-  resetUploadModal();
-});
-document.getElementById('closeUploadBtn').addEventListener('click', () => {
-  uploadModal.classList.remove('open');
-});
+document.getElementById('uploadBtn').addEventListener('click', () => { uploadModal.classList.add('open'); resetUploadModal(); });
+document.getElementById('closeUploadBtn').addEventListener('click', () => uploadModal.classList.remove('open'));
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
@@ -556,36 +529,36 @@ startUploadBtn.addEventListener('click', async () => {
     const file     = filesToUpload[i];
     const statusEl = document.getElementById(`qs-${i}`);
     statusEl.textContent = 'LÄDT …';
-    statusEl.className = 'queue-item-status';
+    statusEl.className   = 'queue-item-status';
 
     try {
-      const result = await uploadToImgBB(file);
+      const result  = await uploadToImgBB(file);
       const imgData = {
-        id:        result.data.id,
-        name:      file.name,
-        url:       result.data.url,
-        thumb:     result.data.thumb?.url || result.data.medium?.url || result.data.url,
-        deleteUrl: result.data.delete_url || ''
+        id:    result.data.id,
+        name:  file.name,
+        url:   result.data.url,
+        thumb: result.data.thumb?.url || result.data.medium?.url || result.data.url
       };
-      // Save to localStorage
+
       allImages.push(imgData);
-      saveImages();
-      // Add to gallery immediately
-      addCard(imgData);
+      addCard(imgData, true);
       visibleCards = [...allCards];
       document.getElementById('counter').textContent = `${allCards.length} Bilder`;
       document.getElementById('noResults').style.display = 'none';
 
       statusEl.textContent = '✓ OK';
-      statusEl.className = 'queue-item-status ok';
+      statusEl.className   = 'queue-item-status ok';
       ok++;
     } catch(e) {
       statusEl.textContent = '✕ FEHLER';
-      statusEl.className = 'queue-item-status err';
+      statusEl.className   = 'queue-item-status err';
       console.error('Upload error:', e.message);
       fail++;
     }
   }
+
+  // Save updated list to Gist once after all uploads
+  if (ok > 0) await gistSave(allImages);
 
   uploadMsg.textContent = `${ok} hochgeladen${fail ? ', ' + fail + ' fehlgeschlagen' : ''}.`;
   document.getElementById('closeUploadBtn').disabled = false;
@@ -594,7 +567,6 @@ startUploadBtn.addEventListener('click', async () => {
 });
 
 async function uploadToImgBB(file) {
-  // Convert file to base64
   const b64 = await new Promise((res, rej) => {
     const r = new FileReader();
     r.onload  = () => res(r.result.split(',')[1]);
@@ -603,24 +575,22 @@ async function uploadToImgBB(file) {
   });
 
   const fd = new FormData();
-  fd.append('key', apiKey);
+  fd.append('key', IMGBB_KEY);
   fd.append('image', b64);
-  fd.append('name', file.name.replace(/\.[^/.]+$/, '')); // filename without extension
+  fd.append('name', file.name.replace(/\.[^/.]+$/, ''));
 
   const resp = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: fd });
   const data = await resp.json();
-
-  if (!data.success) {
-    throw new Error(data.error?.message || `HTTP ${resp.status}`);
-  }
+  if (!data.success) throw new Error(data.error?.message || `HTTP ${resp.status}`);
   return data;
 }
 
-// ── LIGHTBOX ──
+// ─────────────────────────────────────────
+//  LIGHTBOX
+// ─────────────────────────────────────────
 const lightbox = document.getElementById('lightbox');
 const lbImg    = document.getElementById('lightboxImg');
 const lbLabel  = document.getElementById('lightboxLabel');
-const lbDlBtn  = document.getElementById('lbDlBtn');
 
 function openLightbox(card) {
   currentIndex = visibleCards.indexOf(card);
@@ -632,7 +602,7 @@ function showLb(idx) {
   if (!card) return;
   lbImg.src = card.dataset.src;
   lbLabel.textContent = card.dataset.name;
-  lbDlBtn.onclick = () => downloadOne(card.dataset.src, card.dataset.name);
+  document.getElementById('lbDlBtn').onclick = () => downloadOne(card.dataset.src, card.dataset.name);
 }
 document.getElementById('lightboxClose').addEventListener('click', () => lightbox.classList.remove('open'));
 lightbox.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
