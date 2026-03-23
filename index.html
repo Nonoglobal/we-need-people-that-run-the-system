@@ -199,6 +199,20 @@
     min-height: 1em; text-align: center;
   }
 
+  /* ── SETUP HINT ── */
+  #setupHint {
+    display: none;
+    background: rgba(200,255,0,0.05);
+    border: 1px solid rgba(200,255,0,0.2);
+    padding: 1rem; font-size: 0.62rem; letter-spacing: 0.08em;
+    line-height: 1.8; color: #aaa;
+  }
+  #setupHint strong { color: var(--accent); }
+  #setupHint code {
+    background: #1a1a1a; padding: 0.1em 0.4em;
+    color: var(--accent); font-family: 'Share Tech Mono', monospace;
+  }
+
   /* ── MASONRY ── */
   #masonryWrap { padding: var(--gap); }
   #masonry { columns: var(--col); column-gap: var(--gap); }
@@ -381,6 +395,18 @@
     </div>
     <input type="file" id="fileInput" multiple accept="image/*" />
     <div id="uploadQueue"></div>
+
+    <!-- Setup hint shown only on upload error -->
+    <div id="setupHint">
+      <strong>⚠ Cloudinary Preset nicht gefunden</strong><br><br>
+      Bitte in der Cloudinary-Konsole unter <strong>Settings → Upload → Upload presets</strong>
+      einen neuen Preset anlegen:<br><br>
+      • Name: <code>gallery_unsigned</code><br>
+      • Signing mode: <code>Unsigned</code><br>
+      • Folder: <code>gallery</code><br><br>
+      Danach die Seite neu laden und erneut versuchen.
+    </div>
+
     <div id="uploadMsg"></div>
     <div class="upload-actions">
       <button id="startUploadBtn" disabled>HOCHLADEN</button>
@@ -419,14 +445,14 @@
 
 <script>
 // ── CONFIG ──
-const CLOUD_NAME = 'dal67qskn';
-const UPLOAD_PRESET = 'gallery_unsigned'; // Muss in Cloudinary als "Unsigned" angelegt sein
-const FOLDER = 'gallery';
-const API_KEY = '962639543477177';
-const API_SECRET = 'Uk6KjIbFF_u7dWVhZEuOOc258Fw';
+const CLOUD_NAME    = 'dal67qskn';
+const UPLOAD_PRESET = 'gallery_unsigned'; // Muss in Cloudinary als "Unsigned" existieren
+const FOLDER        = 'gallery';
+const API_KEY       = '962639543477177';
+const API_SECRET    = 'Uk6KjIbFF_u7dWVhZEuOOc258Fw';
 
 // ── PASSWORDS ──
-const MAIN_PW   = "010999";
+const MAIN_PW = "010999";
 
 // ── LOCK ──
 const lockScreen = document.getElementById('lockScreen');
@@ -455,8 +481,12 @@ pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); }
 // ── CLOUDINARY ──
 const CLOUDINARY_API = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}`;
 
-// Use Cloudinary Search API (signed, called from browser)
-// This works without CORS issues because we sign the request
+// SHA-1 helper (Web Crypto)
+async function sha1(str) {
+  const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
 async function fetchCloudinaryImages() {
   const timestamp = Math.floor(Date.now() / 1000);
   const strToSign = `expression=folder=${FOLDER}&max_results=500&timestamp=${timestamp}${API_SECRET}`;
@@ -469,8 +499,8 @@ async function fetchCloudinaryImages() {
       expression: `folder:${FOLDER}`,
       max_results: 500,
       api_key: API_KEY,
-      timestamp: timestamp,
-      signature: signature
+      timestamp,
+      signature
     })
   });
 
@@ -479,12 +509,9 @@ async function fetchCloudinaryImages() {
   return data.resources || [];
 }
 
-async function saveIndex() { /* not needed with Search API */ }
-
 async function deleteCloudinaryImage(publicId) {
   const timestamp = Math.floor(Date.now() / 1000);
-  // Signature string must be sorted alphabetically: public_id, timestamp
-  const strToSign = `public_id=${encodeURIComponent(publicId)}&timestamp=${timestamp}${API_SECRET}`;
+  const strToSign = `public_id=${publicId}&timestamp=${timestamp}${API_SECRET}`;
   const signature = await sha1(strToSign);
 
   const fd = new FormData();
@@ -498,17 +525,11 @@ async function deleteCloudinaryImage(publicId) {
   return data.result === 'ok';
 }
 
-// SHA-1 helper (Web Crypto)
-async function sha1(str) {
-  const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
 // ── GALLERY ──
-const masonry     = document.getElementById('masonry');
-const counter     = document.getElementById('counter');
-const searchInput = document.getElementById('searchInput');
-const noResults   = document.getElementById('noResults');
+const masonry      = document.getElementById('masonry');
+const counter      = document.getElementById('counter');
+const searchInput  = document.getElementById('searchInput');
+const noResults    = document.getElementById('noResults');
 const loadingState = document.getElementById('loadingState');
 
 let allCards     = [];
@@ -531,6 +552,8 @@ async function buildGallery() {
       return;
     }
 
+    // Sort by created_at descending so newest appear first
+    resources.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     resources.forEach(res => addCard(res));
     counter.textContent = `${resources.length} Bilder`;
     visibleCards = [...allCards];
@@ -539,6 +562,7 @@ async function buildGallery() {
     noResults.style.display = 'block';
     noResults.textContent = 'Noch keine Bilder. Lade welche hoch!';
     counter.textContent = '0 Bilder';
+    console.error('Gallery load error:', e);
   }
 }
 
@@ -551,16 +575,16 @@ function getFullUrl(publicId) {
 
 function addCard(resource) {
   const publicId = resource.public_id;
-  const name = resource.filename || resource.original_filename || publicId.split('/').pop();
+  const name     = resource.original_filename || resource.filename || publicId.split('/').pop();
   const thumbUrl = getThumbUrl(publicId);
   const fullUrl  = resource.secure_url || getFullUrl(publicId);
 
   const card = document.createElement('div');
   card.className = 'card';
-  card.dataset.src    = fullUrl;
-  card.dataset.thumb  = thumbUrl;
-  card.dataset.name   = name;
-  card.dataset.pid    = publicId;
+  card.dataset.src   = fullUrl;
+  card.dataset.thumb = thumbUrl;
+  card.dataset.name  = name;
+  card.dataset.pid   = publicId;
 
   const img = document.createElement('img');
   img.src = thumbUrl; img.alt = name;
@@ -640,7 +664,7 @@ document.getElementById('dlAllBtn').addEventListener('click', async () => {
       a.href = url; a.download = name;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch(e) {}
+    } catch(e) { console.warn('DL error:', e); }
     dlFill.style.width = Math.round(((i+1)/list.length)*100) + '%';
     dlTxt.textContent  = `${i+1} / ${list.length} heruntergeladen …`;
     await new Promise(r => setTimeout(r, 60));
@@ -673,6 +697,8 @@ document.getElementById('confirmYes').addEventListener('click', async () => {
       if (vi > -1) visibleCards.splice(vi, 1);
       card.remove();
       counter.textContent = `${allCards.length} Bilder`;
+    } else {
+      alert('Löschen fehlgeschlagen – bitte erneut versuchen.');
     }
   } catch(e) { alert('Fehler beim Löschen: ' + e.message); }
 });
@@ -689,6 +715,7 @@ const fileInput      = document.getElementById('fileInput');
 const uploadQueue    = document.getElementById('uploadQueue');
 const startUploadBtn = document.getElementById('startUploadBtn');
 const uploadMsg      = document.getElementById('uploadMsg');
+const setupHint      = document.getElementById('setupHint');
 
 let filesToUpload = [];
 
@@ -725,6 +752,7 @@ function renderQueue() {
   });
   startUploadBtn.disabled = filesToUpload.length === 0;
   uploadMsg.textContent = filesToUpload.length ? `${filesToUpload.length} Datei(en) ausgewählt` : '';
+  setupHint.style.display = 'none';
 }
 
 function resetUploadModal() {
@@ -733,15 +761,19 @@ function resetUploadModal() {
   fileInput.value = '';
   startUploadBtn.disabled = true;
   uploadMsg.textContent = '';
+  setupHint.style.display = 'none';
+  document.getElementById('closeUploadBtn').textContent = 'ABBRECHEN';
+  document.getElementById('closeUploadBtn').disabled = false;
 }
 
 startUploadBtn.addEventListener('click', async () => {
   if (!filesToUpload.length) return;
   startUploadBtn.disabled = true;
   document.getElementById('closeUploadBtn').disabled = true;
+  setupHint.style.display = 'none';
 
   let ok = 0, fail = 0;
-  const newResources = [];
+  let presetError = false;
 
   for (let i = 0; i < filesToUpload.length; i++) {
     const file = filesToUpload[i];
@@ -753,20 +785,28 @@ startUploadBtn.addEventListener('click', async () => {
       const resource = await uploadToCloudinary(file);
       statusEl.textContent = '✓ OK';
       statusEl.className = 'queue-item-status ok';
-      newResources.push(resource);
+      // Add to gallery immediately without full reload
       addCard(resource);
+      visibleCards = [...allCards];
+      counter.textContent = `${allCards.length} Bilder`;
+      noResults.style.display = 'none';
       ok++;
     } catch(e) {
       statusEl.textContent = '✕ FEHLER';
       statusEl.className = 'queue-item-status err';
+      console.error('Upload error:', e.message);
+      // Detect missing preset error
+      if (e.message && (e.message.includes('preset') || e.message.includes('Upload preset'))) {
+        presetError = true;
+      }
       fail++;
     }
   }
 
-  // Index is handled automatically via Search API
+  if (presetError) {
+    setupHint.style.display = 'block';
+  }
 
-  counter.textContent = `${allCards.length} Bilder`;
-  visibleCards = [...allCards];
   uploadMsg.textContent = `${ok} hochgeladen${fail ? ', ' + fail + ' fehlgeschlagen' : ''}.`;
   document.getElementById('closeUploadBtn').disabled = false;
   document.getElementById('closeUploadBtn').textContent = 'SCHLIESSEN';
@@ -784,11 +824,13 @@ async function uploadToCloudinary(file) {
     body: fd
   });
 
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error?.message || 'Upload failed');
+  const data = await resp.json();
+
+  if (!resp.ok || data.error) {
+    throw new Error(data.error?.message || `HTTP ${resp.status}`);
   }
-  return await resp.json();
+
+  return data;
 }
 
 // ── LIGHTBOX ──
