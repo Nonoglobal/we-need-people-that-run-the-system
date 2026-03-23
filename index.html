@@ -426,8 +426,7 @@ const API_KEY = '962639543477177';
 const API_SECRET = 'Uk6KjIbFF_u7dWVhZEuOOc258Fw';
 
 // ── PASSWORDS ──
-const MAIN_PW   = "we need people to run the system";
-const BACKUP_PW = "010999";
+const MAIN_PW   = "010999";
 
 // ── LOCK ──
 const lockScreen = document.getElementById('lockScreen');
@@ -443,9 +442,6 @@ function tryUnlock() {
     lockScreen.classList.add('hidden');
     document.getElementById('gallery').classList.add('visible');
     if (!galleryBuilt) { buildGallery(); galleryBuilt = true; }
-  } else if (v === BACKUP_PW) {
-    setMsg('Richtiges Passwort:\n' + MAIN_PW, 'var(--accent)');
-    pwInput.value = '';
   } else {
     pwInput.classList.add('error');
     setMsg('Неверный пароль. Попробуйте снова.', 'var(--danger)');
@@ -458,8 +454,6 @@ pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); }
 
 // ── CLOUDINARY ──
 const CLOUDINARY_API = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}`;
-const API_KEY    = '962639543477177';
-const API_SECRET = 'Uk6KjIbFF_u7dWVhZEuOOc258Fw';
 
 // We store the image list as a JSON file in Cloudinary itself (raw upload).
 // This avoids the CORS problem of calling the Admin API from the browser.
@@ -503,17 +497,13 @@ async function saveIndex(list) {
 async function deleteCloudinaryImage(publicId) {
   // For deletion from the browser we need a signed request
   // We use the destroy endpoint with timestamp + signature
-  const apiKey    = '962639543477177';
-  const apiSecret = 'Uk6KjIbFF_u7dWVhZEuOOc258Fw';
   const timestamp = Math.floor(Date.now() / 1000);
-
-  // Generate SHA-1 signature
-  const strToSign = `public_id=${publicId}&timestamp=${timestamp}${apiSecret}`;
+  const strToSign = `public_id=${publicId}&timestamp=${timestamp}${API_SECRET}`;
   const signature = await sha1(strToSign);
 
   const fd = new FormData();
   fd.append('public_id', publicId);
-  fd.append('api_key', apiKey);
+  fd.append('api_key', API_KEY);
   fd.append('timestamp', timestamp);
   fd.append('signature', signature);
 
