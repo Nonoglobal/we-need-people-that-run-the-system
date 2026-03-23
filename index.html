@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Система доступа</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --border: #1e1e1e;
+    --accent: #c8ff00;
+    --text: #e0e0e0;
+    --muted: #555;
+    --danger: #ff3c3c;
+    --col: 280px;
+    --gap: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+  }
+
+  /* ── LOCK ── */
+  #lockScreen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 9999;
+  }
+  #lockScreen.hidden { display: none; }
+
+  .lock-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2rem, 6vw, 4.5rem);
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    margin-bottom: 0.25em;
+  }
+  .lock-sub {
+    font-size: 0.68rem; color: var(--muted);
+    letter-spacing: 0.3em; text-transform: uppercase;
+    margin-bottom: 3rem;
+  }
+  .lock-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 2.5rem; width: min(420px, 92vw);
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  .lock-label {
+    font-size: 0.63rem; letter-spacing: 0.25em;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+  #passwordInput {
+    background: #0d0d0d; border: 1px solid var(--border);
+    color: var(--text); font-family: 'Share Tech Mono', monospace;
+    font-size: 1rem; padding: 0.75rem 1rem; width: 100%;
+    outline: none; transition: border-color 0.2s; letter-spacing: 0.1em;
+  }
+  #passwordInput:focus { border-color: var(--accent); }
+  #passwordInput.error { border-color: var(--danger); animation: shake 0.35s; }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)}
+  }
+  #unlockBtn {
+    background: var(--accent); color: #000; border: none;
+    padding: 0.85rem; font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem; letter-spacing: 0.2em; cursor: pointer;
+    transition: opacity 0.15s; width: 100%;
+  }
+  #unlockBtn:hover { opacity: 0.85; }
+  #lockMsg {
+    font-size: 0.68rem; letter-spacing: 0.12em; min-height: 1.2em;
+    text-align: center; white-space: pre-wrap; word-break: break-word; line-height: 1.6;
+  }
+  .lock-footer { font-size: 0.56rem; color: #282828; text-align: center; letter-spacing: 0.1em; }
+
+  /* ── GALLERY ── */
+  #gallery { display: none; }
+  #gallery.visible { display: block; }
+
+  header {
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    position: sticky; top: 0;
+    background: rgba(10,10,10,0.96);
+    backdrop-filter: blur(10px); z-index: 100;
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.9rem; letter-spacing: 0.15em; color: var(--accent);
+  }
+  #counter { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.18em; }
+  #searchInput {
+    background: #0d0d0d; border: 1px solid var(--border);
+    color: var(--text); font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem; padding: 0.45rem 0.75rem; outline: none;
+    width: 150px; transition: border-color 0.2s;
+  }
+  #searchInput:focus { border-color: var(--accent); }
+  #searchInput::placeholder { color: var(--muted); }
+
+  #dlAllBtn {
+    margin-left: auto; background: none; border: 1px solid var(--border);
+    color: var(--text); font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem; padding: 0.45rem 0.9rem; cursor: pointer;
+    letter-spacing: 0.12em; transition: border-color 0.15s, color 0.15s; white-space: nowrap;
+  }
+  #dlAllBtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── PINTEREST / MASONRY ── */
+  #masonryWrap {
+    padding: var(--gap);
+  }
+  #masonry {
+    columns: var(--col);
+    column-gap: var(--gap);
+  }
+  @media (max-width: 600px) {
+    :root { --col: 160px; --gap: 6px; }
+  }
+
+  .card {
+    break-inside: avoid;
+    margin-bottom: var(--gap);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--surface);
+    display: block;
+  }
+  .card img {
+    width: 100%; height: auto;
+    display: block;
+    opacity: 0; transition: opacity 0.35s;
+  }
+  .card img.loaded { opacity: 1; }
+
+  .card-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0);
+    transition: background 0.2s;
+    display: flex; flex-direction: column;
+    justify-content: flex-end;
+  }
+  .card:hover .card-overlay { background: rgba(0,0,0,0.45); }
+
+  .card-bar {
+    padding: 0.5rem 0.6rem;
+    display: flex; justify-content: space-between; align-items: center;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 0.2s, transform 0.2s;
+    font-size: 0.6rem; letter-spacing: 0.1em; color: #ccc;
+  }
+  .card:hover .card-bar { opacity: 1; transform: translateY(0); }
+
+  .card-dl {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff; font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem; padding: 0.2rem 0.5rem; cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .card-dl:hover { border-color: var(--accent); color: var(--accent); }
+
+  #noResults {
+    display: none; padding: 4rem; text-align: center;
+    color: var(--muted); font-size: 0.8rem; letter-spacing: 0.3em;
+  }
+
+  /* ── LIGHTBOX ── */
+  #lightbox {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.96); z-index: 8888;
+    align-items: center; justify-content: center; flex-direction: column; gap: 1rem;
+  }
+  #lightbox.open { display: flex; }
+
+  #lightboxImg {
+    max-width: 90vw; max-height: 82vh;
+    object-fit: contain; border: 1px solid var(--border); display: block;
+  }
+  .lb-bar { display: flex; align-items: center; gap: 1.2rem; }
+  #lightboxLabel { font-size: 0.68rem; letter-spacing: 0.22em; color: var(--muted); }
+  #lbDlBtn {
+    background: none; border: 1px solid var(--border); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 0.68rem;
+    padding: 0.35rem 0.9rem; cursor: pointer; letter-spacing: 0.12em;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  #lbDlBtn:hover { border-color: var(--accent); color: var(--accent); }
+  #lightboxClose {
+    position: absolute; top: 1.2rem; right: 1.2rem;
+    background: none; border: 1px solid var(--border); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 0.78rem;
+    padding: 0.35rem 0.75rem; cursor: pointer; letter-spacing: 0.1em;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  #lightboxClose:hover { border-color: var(--accent); color: var(--accent); }
+  .lb-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    background: none; border: 1px solid var(--border); color: var(--text);
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem;
+    padding: 0.5rem 0.9rem; cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .lb-nav:hover { border-color: var(--accent); color: var(--accent); }
+  #lbPrev { left: 1.2rem; } #lbNext { right: 1.2rem; }
+
+  /* ── PROGRESS TOAST ── */
+  #dlProgress {
+    display: none; position: fixed; bottom: 1.5rem; right: 1.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 0.9rem 1.3rem; font-size: 0.68rem; letter-spacing: 0.1em;
+    color: var(--text); z-index: 9000; min-width: 220px;
+  }
+  #dlProgress.visible { display: block; }
+  #dlBar { height: 2px; background: var(--border); margin-top: 0.6rem; }
+  #dlBarFill { height: 100%; background: var(--accent); width: 0%; transition: width 0.12s; }
+</style>
+</head>
+<body>
+
+<!-- LOCK (Russisch) -->
+<div id="lockScreen">
+  <div class="lock-title">ЗАЩИЩЁННАЯ ЗОНА</div>
+  <div class="lock-sub">Доступ ограничен · Введите пароль для входа</div>
+  <div class="lock-box">
+    <div>
+      <div class="lock-label">Пароль доступа</div>
+      <input type="password" id="passwordInput" placeholder="••••••••••••••••" autocomplete="off" />
+    </div>
+    <button id="unlockBtn">ВОЙТИ В СИСТЕМУ</button>
+    <div id="lockMsg"></div>
+    <div class="lock-footer">© Система авторизации v2.4 · Несанкционированный доступ запрещён законом</div>
+  </div>
+</div>
+
+<!-- GALLERY -->
+<div id="gallery">
+  <header>
+    <h1>Galerie</h1>
+    <span id="counter">—</span>
+    <input type="text" id="searchInput" placeholder="Dateiname suchen …" />
+    <button id="dlAllBtn">⬇ Alle herunterladen</button>
+  </header>
+  <div id="masonryWrap">
+    <div id="masonry"></div>
+    <div id="noResults">Keine Ergebnisse</div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox">
+  <button id="lightboxClose">✕ Schließen</button>
+  <button class="lb-nav" id="lbPrev">‹</button>
+  <img id="lightboxImg" src="" alt="" />
+  <div class="lb-bar">
+    <div id="lightboxLabel"></div>
+    <button id="lbDlBtn">⬇ Herunterladen</button>
+  </div>
+  <button class="lb-nav" id="lbNext">›</button>
+</div>
+
+<div id="dlProgress">
+  <div id="dlProgressText">Lade herunter …</div>
+  <div id="dlBar"><div id="dlBarFill"></div></div>
+</div>
+
+<script>
+// ── PASSWORDS ──
+const MAIN_PW   = "we need people to run the system";
+const BACKUP_PW = "010999";
+
+const lockScreen = document.getElementById('lockScreen');
+const pwInput    = document.getElementById('passwordInput');
+const lockMsg    = document.getElementById('lockMsg');
+
+let galleryBuilt = false;
+
+function setMsg(txt, color) { lockMsg.style.color = color; lockMsg.textContent = txt; }
+
+function tryUnlock() {
+  const v = pwInput.value;
+  if (v === MAIN_PW) {
+    lockScreen.classList.add('hidden');
+    document.getElementById('gallery').classList.add('visible');
+    if (!galleryBuilt) { buildGallery(); galleryBuilt = true; }
+  } else if (v === BACKUP_PW) {
+    setMsg('Richtiges Passwort:\n' + MAIN_PW, 'var(--accent)');
+    pwInput.value = '';
+  } else {
+    pwInput.classList.add('error');
+    setMsg('Неверный пароль. Попробуйте снова.', 'var(--danger)');
+    setTimeout(() => pwInput.classList.remove('error'), 400);
+  }
+}
+
+document.getElementById('unlockBtn').addEventListener('click', tryUnlock);
+pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+
+// ── IMAGE DISCOVERY ──
+// We generate all possible filenames for "1 (1)" to "1 (1000)" in jpg/jpeg/png/webp
+// AND also try to discover any other images in the same folder via a manifest trick:
+// Since we can't list directories from JS, we scan the known pattern + also
+// accept any img that loads. For "random filenames", we use a manifest file approach:
+// The user should place a file called "images.json" next to index.html listing filenames.
+// If that doesn't exist, we fall back to the numbered pattern.
+// ALSO: we try to load images.json automatically.
+
+const masonry    = document.getElementById('masonry');
+const counter    = document.getElementById('counter');
+const searchInput = document.getElementById('searchInput');
+const noResults   = document.getElementById('noResults');
+
+let allCards     = [];
+let visibleCards = [];
+let currentIndex = 0;
+
+async function buildGallery() {
+  let filenames = [];
+
+  // Try manifest first
+  try {
+    const r = await fetch('images.json');
+    if (r.ok) {
+      filenames = await r.json(); // expects array of filename strings
+    }
+  } catch(e) {}
+
+  // Fallback: numbered pattern
+  if (!filenames.length) {
+    const EXTS = ['jpg', 'jpeg', 'png', 'webp'];
+    for (let i = 1; i <= 1000; i++) {
+      for (const ext of EXTS) {
+        filenames.push(`1 (${i}).${ext}`);
+      }
+    }
+  }
+
+  // Load images and only keep those that exist
+  let loaded = 0;
+  const promises = filenames.map(fn => loadImage(fn));
+  const results  = await Promise.allSettled(promises);
+
+  results.forEach((res, idx) => {
+    if (res.status === 'fulfilled') {
+      addCard(filenames[idx]);
+      loaded++;
+    }
+  });
+
+  counter.textContent = `${loaded} Bilder`;
+  visibleCards = [...allCards];
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload  = () => resolve(src);
+    img.onerror = () => reject(src);
+    img.src = src;
+  });
+}
+
+function addCard(src) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.src  = src;
+  card.dataset.name = src;
+
+  const img = document.createElement('img');
+  img.src = src; img.alt = src;
+  img.loading = 'lazy';
+  img.onload = () => img.classList.add('loaded');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'card-overlay';
+
+  const bar = document.createElement('div');
+  bar.className = 'card-bar';
+
+  const nameSpan = document.createElement('span');
+  nameSpan.textContent = src;
+
+  const dlBtn = document.createElement('button');
+  dlBtn.className = 'card-dl';
+  dlBtn.textContent = '⬇';
+  dlBtn.title = 'Herunterladen';
+  dlBtn.addEventListener('click', e => { e.stopPropagation(); downloadOne(src); });
+
+  bar.appendChild(nameSpan);
+  bar.appendChild(dlBtn);
+  overlay.appendChild(bar);
+  card.appendChild(img);
+  card.appendChild(overlay);
+  card.addEventListener('click', () => openLightbox(card));
+
+  masonry.appendChild(card);
+  allCards.push(card);
+}
+
+// ── SEARCH ──
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  visibleCards = [];
+  let n = 0;
+  allCards.forEach(c => {
+    const show = q === '' || c.dataset.name.toLowerCase().includes(q);
+    c.style.display = show ? '' : 'none';
+    if (show) { visibleCards.push(c); n++; }
+  });
+  counter.textContent = q ? `${n} von ${allCards.length}` : `${allCards.length} Bilder`;
+  noResults.style.display = n === 0 ? 'block' : 'none';
+});
+
+// ── DOWNLOAD SINGLE ──
+function downloadOne(src) {
+  const a = document.createElement('a');
+  a.href = src; a.download = src;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ── DOWNLOAD ALL ──
+document.getElementById('dlAllBtn').addEventListener('click', async () => {
+  const list = visibleCards.filter(c => c.dataset.src);
+  if (!list.length) return;
+  const dlProg = document.getElementById('dlProgress');
+  const dlTxt  = document.getElementById('dlProgressText');
+  const dlFill = document.getElementById('dlBarFill');
+  dlProg.classList.add('visible');
+  dlFill.style.width = '0%';
+
+  for (let i = 0; i < list.length; i++) {
+    const src = list[i].dataset.src;
+    try {
+      const blob = await (await fetch(src)).blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = src;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch(e) {}
+    dlFill.style.width = Math.round(((i+1)/list.length)*100) + '%';
+    dlTxt.textContent  = `${i+1} / ${list.length} heruntergeladen …`;
+    await new Promise(r => setTimeout(r, 60));
+  }
+  dlTxt.textContent = `✓ Fertig! ${list.length} Bilder gespeichert.`;
+  setTimeout(() => dlProg.classList.remove('visible'), 3500);
+});
+
+// ── LIGHTBOX ──
+const lightbox = document.getElementById('lightbox');
+const lbImg    = document.getElementById('lightboxImg');
+const lbLabel  = document.getElementById('lightboxLabel');
+const lbDlBtn  = document.getElementById('lbDlBtn');
+
+function openLightbox(card) {
+  currentIndex = visibleCards.indexOf(card);
+  showLb(currentIndex);
+  lightbox.classList.add('open');
+}
+function showLb(idx) {
+  const card = visibleCards[idx]; if (!card) return;
+  lbImg.src = card.dataset.src;
+  lbLabel.textContent = card.dataset.name;
+  lbDlBtn.onclick = () => downloadOne(card.dataset.src);
+}
+
+document.getElementById('lightboxClose').addEventListener('click', () => lightbox.classList.remove('open'));
+lightbox.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
+document.getElementById('lbPrev').addEventListener('click', e => {
+  e.stopPropagation();
+  currentIndex = (currentIndex - 1 + visibleCards.length) % visibleCards.length;
+  showLb(currentIndex);
+});
+document.getElementById('lbNext').addEventListener('click', e => {
+  e.stopPropagation();
+  currentIndex = (currentIndex + 1) % visibleCards.length;
+  showLb(currentIndex);
+});
+document.addEventListener('keydown', e => {
+  if (!lightbox.classList.contains('open')) return;
+  if (e.key === 'ArrowLeft')  { currentIndex=(currentIndex-1+visibleCards.length)%visibleCards.length; showLb(currentIndex); }
+  if (e.key === 'ArrowRight') { currentIndex=(currentIndex+1)%visibleCards.length; showLb(currentIndex); }
+  if (e.key === 'Escape') lightbox.classList.remove('open');
+});
+</script>
+</body>
+</html>
