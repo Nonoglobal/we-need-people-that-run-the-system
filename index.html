@@ -1,509 +1,431 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Galerie · Geschützt</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap');
-  :root {
-    --bg: #0a0a0a; --surface: #111; --border: #1e1e1e;
-    --accent: #c8ff00; --text: #e0e0e0; --muted: #555;
-    --danger: #ff3c3c; --col: 280px; --gap: 10px;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:'Share Tech Mono',monospace; min-height:100vh; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meine Bilder Galerie</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel-light: #334155;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+      --radius: 18px;
+    }
 
-  #lockScreen { position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
-  #lockScreen.hidden { display:none; }
-  .lock-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(2rem,6vw,4.5rem); letter-spacing:.15em; color:var(--accent); margin-bottom:.25em; }
-  .lock-sub { font-size:.68rem; color:var(--muted); letter-spacing:.3em; text-transform:uppercase; margin-bottom:3rem; }
-  .lock-box { background:var(--surface); border:1px solid var(--border); padding:2.5rem; width:min(420px,92vw); display:flex; flex-direction:column; gap:1rem; }
-  .lock-label { font-size:.63rem; letter-spacing:.25em; color:var(--muted); text-transform:uppercase; margin-bottom:.25rem; }
-  #passwordInput { background:#0d0d0d; border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:1rem; padding:.75rem 1rem; width:100%; outline:none; transition:border-color .2s; letter-spacing:.1em; }
-  #passwordInput:focus { border-color:var(--accent); }
-  #passwordInput.error { border-color:var(--danger); animation:shake .35s; }
-  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
-  #unlockBtn { background:var(--accent); color:#000; border:none; padding:.85rem; font-family:'Bebas Neue',sans-serif; font-size:1.2rem; letter-spacing:.2em; cursor:pointer; width:100%; }
-  #unlockBtn:hover { opacity:.85; }
-  #lockMsg { font-size:.68rem; letter-spacing:.12em; min-height:1.2em; text-align:center; }
-  .lock-footer { font-size:.56rem; color:#282828; text-align:center; letter-spacing:.1em; }
+    * {
+      box-sizing: border-box;
+    }
 
-  #gallery { display:none; }
-  #gallery.visible { display:block; }
-  header { padding:1.1rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:1rem; flex-wrap:wrap; position:sticky; top:0; background:rgba(10,10,10,.96); backdrop-filter:blur(10px); z-index:100; }
-  header h1 { font-family:'Bebas Neue',sans-serif; font-size:1.9rem; letter-spacing:.15em; color:var(--accent); }
-  #counter { font-size:.68rem; color:var(--muted); letter-spacing:.18em; }
-  #searchInput { background:#0d0d0d; border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:.78rem; padding:.45rem .75rem; outline:none; width:150px; transition:border-color .2s; }
-  #searchInput:focus { border-color:var(--accent); }
-  #searchInput::placeholder { color:var(--muted); }
-  .header-actions { margin-left:auto; display:flex; gap:.5rem; align-items:center; }
-  #uploadBtn { background:var(--accent); color:#000; border:none; font-family:'Bebas Neue',sans-serif; font-size:1rem; letter-spacing:.15em; cursor:pointer; padding:.45rem 1rem; white-space:nowrap; }
-  #uploadBtn:hover { opacity:.85; }
-  #syncStatus { font-size:.6rem; color:var(--muted); letter-spacing:.1em; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #020617, #0f172a 40%, #1e293b);
+      color: var(--text);
+      min-height: 100vh;
+    }
 
-  #gistBanner { display:none; background:#161600; border-bottom:1px solid #444400; padding:1rem 1.5rem; font-size:.68rem; letter-spacing:.08em; line-height:2; }
-  #gistBanner strong { color:var(--accent); }
-  #gistIdDisplay { background:#0a0a00; border:1px solid var(--accent); padding:.2em .6em; color:var(--accent); cursor:pointer; font-size:.8rem; letter-spacing:.05em; }
-  #gistIdDisplay:hover { background:#1a1a00; }
+    .container {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 48px;
+    }
 
-  #uploadModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:9000; align-items:center; justify-content:center; }
-  #uploadModal.open { display:flex; }
-  .upload-box { background:var(--surface); border:1px solid var(--border); padding:2.5rem; width:min(480px,94vw); display:flex; flex-direction:column; gap:1.2rem; }
-  .upload-box h2 { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:.15em; color:var(--accent); }
-  #dropZone { border:2px dashed var(--border); padding:2.5rem 1rem; text-align:center; cursor:pointer; transition:border-color .2s,background .2s; font-size:.72rem; color:var(--muted); letter-spacing:.15em; }
-  #dropZone:hover, #dropZone.drag-over { border-color:var(--accent); background:rgba(200,255,0,.03); color:var(--accent); }
-  #fileInput { display:none; }
-  #uploadQueue { display:flex; flex-direction:column; gap:.5rem; max-height:220px; overflow-y:auto; }
-  .queue-item { display:flex; align-items:center; gap:.6rem; font-size:.65rem; letter-spacing:.08em; }
-  .queue-item-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .queue-item-status { color:var(--muted); white-space:nowrap; min-width:60px; text-align:right; }
-  .queue-item-status.ok { color:var(--accent); }
-  .queue-item-status.err { color:var(--danger); }
-  .upload-actions { display:flex; gap:.7rem; }
-  #startUploadBtn { flex:1; background:var(--accent); color:#000; border:none; padding:.75rem; font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:.2em; cursor:pointer; }
-  #startUploadBtn:disabled { opacity:.35; cursor:default; }
-  #closeUploadBtn { background:none; border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:.75rem; padding:.75rem 1rem; cursor:pointer; letter-spacing:.1em; }
-  #closeUploadBtn:hover { border-color:var(--danger); color:var(--danger); }
-  #uploadMsg { font-size:.65rem; letter-spacing:.12em; color:var(--muted); min-height:1em; text-align:center; }
+    .hero {
+      background: rgba(30, 41, 59, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 28px;
+      backdrop-filter: blur(10px);
+    }
 
-  #masonryWrap { padding:var(--gap); }
-  #masonry { columns:var(--col); column-gap:var(--gap); }
-  @media (max-width:600px) { :root { --col:160px; --gap:6px; } }
-  .card { break-inside:avoid; margin-bottom:var(--gap); position:relative; overflow:hidden; cursor:pointer; background:var(--surface); }
-  .card img { width:100%; height:auto; display:block; opacity:0; transition:opacity .35s; }
-  .card img.loaded { opacity:1; }
-  .card-overlay { position:absolute; inset:0; background:rgba(0,0,0,0); transition:background .2s; display:flex; flex-direction:column; justify-content:flex-end; }
-  .card:hover .card-overlay { background:rgba(0,0,0,.5); }
-  .card-bar { padding:.5rem .6rem; display:flex; justify-content:space-between; align-items:center; opacity:0; transform:translateY(6px); transition:opacity .2s,transform .2s; font-size:.6rem; letter-spacing:.1em; color:#ccc; gap:.4rem; }
-  .card:hover .card-bar { opacity:1; transform:translateY(0); }
-  .card-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .card-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); color:#fff; font-family:'Share Tech Mono',monospace; font-size:.6rem; padding:.2rem .5rem; cursor:pointer; transition:border-color .15s,color .15s; white-space:nowrap; }
-  .card-btn:hover { border-color:var(--accent); color:var(--accent); }
-  .card-btn.del:hover { border-color:var(--danger); color:var(--danger); }
-  #loadingState { padding:4rem; text-align:center; color:var(--muted); font-size:.75rem; letter-spacing:.3em; }
-  #loadingState .dot { animation:blink 1.2s infinite; }
-  #loadingState .dot:nth-child(2) { animation-delay:.2s; }
-  #loadingState .dot:nth-child(3) { animation-delay:.4s; }
-  @keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
-  #noResults { display:none; padding:4rem; text-align:center; color:var(--muted); font-size:.8rem; letter-spacing:.3em; }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(28px, 5vw, 42px);
+    }
 
-  #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.96); z-index:8888; align-items:center; justify-content:center; flex-direction:column; gap:1rem; }
-  #lightbox.open { display:flex; }
-  #lightboxImg { max-width:90vw; max-height:82vh; object-fit:contain; border:1px solid var(--border); }
-  .lb-bar { display:flex; align-items:center; gap:1.2rem; }
-  #lightboxLabel { font-size:.68rem; letter-spacing:.22em; color:var(--muted); }
-  #lbDlBtn, #lightboxClose { background:none; border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:.68rem; padding:.35rem .9rem; cursor:pointer; letter-spacing:.12em; transition:border-color .15s,color .15s; }
-  #lbDlBtn:hover { border-color:var(--accent); color:var(--accent); }
-  #lightboxClose { position:absolute; top:1.2rem; right:1.2rem; }
-  #lightboxClose:hover { border-color:var(--accent); color:var(--accent); }
-  .lb-nav { position:absolute; top:50%; transform:translateY(-50%); background:none; border:1px solid var(--border); color:var(--text); font-family:'Bebas Neue',sans-serif; font-size:1.5rem; padding:.5rem .9rem; cursor:pointer; transition:border-color .15s,color .15s; }
-  .lb-nav:hover { border-color:var(--accent); color:var(--accent); }
-  #lbPrev { left:1.2rem; } #lbNext { right:1.2rem; }
+    .subtitle {
+      margin: 0 0 22px;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 800px;
+    }
 
-  #confirmModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:9500; align-items:center; justify-content:center; }
-  #confirmModal.open { display:flex; }
-  .confirm-box { background:var(--surface); border:1px solid var(--border); padding:2rem; width:min(360px,92vw); display:flex; flex-direction:column; gap:1.2rem; }
-  .confirm-box p { font-size:.75rem; letter-spacing:.1em; line-height:1.7; }
-  .confirm-box strong { color:var(--accent); }
-  .confirm-actions { display:flex; gap:.7rem; }
-  #confirmYes { flex:1; background:var(--danger); color:#fff; border:none; padding:.7rem; font-family:'Bebas Neue',sans-serif; font-size:1rem; letter-spacing:.15em; cursor:pointer; }
-  #confirmNo { flex:1; background:none; border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:.72rem; padding:.7rem; cursor:pointer; letter-spacing:.1em; }
-  #confirmNo:hover { border-color:var(--accent); }
-</style>
+    .upload-box {
+      display: grid;
+      gap: 14px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    input[type="file"] {
+      flex: 1 1 280px;
+      background: #fff;
+      color: #111827;
+      border-radius: 12px;
+      padding: 12px;
+      border: none;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease, opacity 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .upload-btn {
+      background: var(--accent);
+      color: #082f49;
+    }
+
+    .upload-btn:hover {
+      background: var(--accent-hover);
+      color: white;
+    }
+
+    .clear-btn {
+      background: #475569;
+      color: white;
+    }
+
+    .status {
+      min-height: 24px;
+      font-weight: 700;
+    }
+
+    .status.success {
+      color: var(--success);
+    }
+
+    .status.error {
+      color: #fca5a5;
+    }
+
+    .gallery-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 8px 0 18px;
+    }
+
+    .gallery-header h2 {
+      margin: 0;
+      font-size: 26px;
+    }
+
+    .gallery-count {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      background: rgba(30, 41, 59, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .card img {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      display: block;
+      background: #0b1120;
+    }
+
+    .card-body {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 15px;
+      word-break: break-word;
+    }
+
+    .card-link {
+      color: #7dd3fc;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .card-link:hover {
+      text-decoration: underline;
+    }
+
+    .delete-btn {
+      background: var(--danger);
+      color: white;
+      width: 100%;
+    }
+
+    .empty {
+      padding: 30px;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px dashed rgba(148, 163, 184, 0.25);
+      border-radius: 16px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .hint {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    code {
+      background: rgba(15, 23, 42, 0.8);
+      padding: 2px 6px;
+      border-radius: 6px;
+      color: #bae6fd;
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        width: min(100% - 20px, 1100px);
+        padding-top: 20px;
+      }
+
+      .hero {
+        padding: 20px;
+      }
+
+      .gallery-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .card img {
+        height: 180px;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <section class="hero">
+      <h1>Bilder Upload Galerie</h1>
+      <p class="subtitle">
+        Nutzer können Bilder vom PC hochladen. Die Dateien werden bei Cloudinary gespeichert und
+        bleiben dadurch dauerhaft online. Die Galerie-Liste wird zusätzlich im Browser gespeichert,
+        damit die bereits hochgeladenen Bilder auf dieser Website wieder angezeigt werden.
+      </p>
 
-<div id="lockScreen">
-  <div class="lock-title">GESCHÜTZTE ZONE</div>
-  <div class="lock-sub">Zugang beschränkt · Passwort eingeben</div>
-  <div class="lock-box">
-    <div>
-      <div class="lock-label">Passwort</div>
-      <input type="password" id="passwordInput" placeholder="••••••••••••••••" autocomplete="off" />
-    </div>
-    <button id="unlockBtn">EINLOGGEN</button>
-    <div id="lockMsg"></div>
-    <div class="lock-footer">© Autorisation v3.0</div>
+      <div class="upload-box">
+        <div class="controls">
+          <input id="imageInput" type="file" accept="image/*" multiple />
+          <button id="uploadBtn" class="upload-btn">Bilder hochladen</button>
+          <button id="clearBtn" class="clear-btn" type="button">Galerie-Anzeige leeren</button>
+        </div>
+        <div id="status" class="status"></div>
+        <div class="hint">
+          Cloudinary Cloud Name: <code>dal67qskn</code> |
+          Upload Preset: <code>gallery_unsigned</code>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="gallery-header">
+        <h2>Gespeicherte Bilder</h2>
+        <div id="galleryCount" class="gallery-count">0 Bilder</div>
+      </div>
+      <div id="gallery"></div>
+    </section>
   </div>
-</div>
 
-<div id="gallery">
-  <header>
-    <h1>Galerie</h1>
-    <span id="counter">—</span>
-    <input type="text" id="searchInput" placeholder="Dateiname suchen …" />
-    <div class="header-actions">
-      <span id="syncStatus"></span>
-      <button id="uploadBtn">⬆ Hochladen</button>
-    </div>
-  </header>
+  <script>
+    const CLOUD_NAME = "dal67qskn";
+    const UPLOAD_PRESET = "gallery_unsigned";
+    const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+    const STORAGE_KEY = "cloudinary_gallery_items_v1";
 
-  <div id="gistBanner">
-    ⚠ <strong>EINMALIG:</strong> Gist-ID wurde erstellt →
-    <span id="gistIdDisplay" title="Klicken zum Kopieren"></span>
-    ← Bitte diese ID an den Entwickler schicken, damit sie fest eingebaut wird. Erst dann bleiben Bilder dauerhaft gespeichert.
-  </div>
+    const imageInput = document.getElementById("imageInput");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const statusEl = document.getElementById("status");
+    const galleryEl = document.getElementById("gallery");
+    const galleryCountEl = document.getElementById("galleryCount");
 
-  <div id="masonryWrap">
-    <div id="loadingState">LADE BILDER<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
-    <div id="masonry"></div>
-    <div id="noResults">Noch keine Bilder · Lade welche hoch!</div>
-  </div>
-</div>
+    let galleryItems = loadGalleryItems();
 
-<div id="uploadModal">
-  <div class="upload-box">
-    <h2>Bilder hochladen</h2>
-    <div id="dropZone">
-      DATEIEN HIER ABLEGEN<br>
-      <span style="font-size:.6rem;margin-top:.4rem;display:block">oder klicken · JPG / PNG / WEBP / GIF</span>
-    </div>
-    <input type="file" id="fileInput" multiple accept="image/*" />
-    <div id="uploadQueue"></div>
-    <div id="uploadMsg"></div>
-    <div class="upload-actions">
-      <button id="startUploadBtn" disabled>HOCHLADEN</button>
-      <button id="closeUploadBtn">ABBRECHEN</button>
-    </div>
-  </div>
-</div>
-
-<div id="lightbox">
-  <button id="lightboxClose">✕ Schließen</button>
-  <button class="lb-nav" id="lbPrev">‹</button>
-  <img id="lightboxImg" src="" alt="" />
-  <div class="lb-bar">
-    <div id="lightboxLabel"></div>
-    <button id="lbDlBtn">⬇ Herunterladen</button>
-  </div>
-  <button class="lb-nav" id="lbNext">›</button>
-</div>
-
-<div id="confirmModal">
-  <div class="confirm-box">
-    <p>Bild <strong id="confirmName"></strong> wirklich löschen?<br>Diese Aktion kann nicht rückgängig gemacht werden.</p>
-    <div class="confirm-actions">
-      <button id="confirmYes">LÖSCHEN</button>
-      <button id="confirmNo">ABBRECHEN</button>
-    </div>
-  </div>
-</div>
-
-<script>
-// ── CONFIG — hier alles fest eingetragen ──
-const MAIN_PW      = '010999';
-const IMGBB_KEY    = 'fa616da4199614d55ab9b17c119ee2c7';
-const GITHUB_TOKEN = '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';
-const GIST_FILE    = 'gallery_images.json';
-
-// Gist-ID: wird beim ersten Start automatisch erstellt und hier fest gespeichert.
-// Sobald die ID bekannt ist, wird sie hier eingetragen und die Seite neu deployed.
-const HARDCODED_GIST_ID = ''; // ← wird nach erstem Start befüllt
-
-// ── STATE ──
-let GIST_ID = HARDCODED_GIST_ID;
-let allImages = [], allCards = [], visibleCards = [], currentIndex = 0;
-
-// ── LOCK ──
-document.getElementById('unlockBtn').addEventListener('click', tryUnlock);
-document.getElementById('passwordInput').addEventListener('keydown', e => { if(e.key==='Enter') tryUnlock(); });
-
-function tryUnlock() {
-  if (document.getElementById('passwordInput').value === MAIN_PW) {
-    document.getElementById('lockScreen').classList.add('hidden');
-    document.getElementById('gallery').classList.add('visible');
-    startGallery();
-  } else {
-    const inp = document.getElementById('passwordInput');
-    inp.classList.add('error');
-    const msg = document.getElementById('lockMsg');
-    msg.style.color = 'var(--danger)';
-    msg.textContent = 'Falsches Passwort.';
-    setTimeout(() => inp.classList.remove('error'), 400);
-  }
-}
-
-// ── GIST ──
-const GH = { 'Authorization': `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' };
-
-async function gistLoad() {
-  setSyncStatus('Lade …');
-  try {
-    // 1. Hardcoded ID (nach erstem Setup)
-    if (GIST_ID) {
-      const r = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers: GH });
-      if (r.ok) {
-        const d = await r.json();
-        setSyncStatus('');
-        return JSON.parse(d.files?.[GIST_FILE]?.content || '[]');
+    function loadGalleryItems() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        return [];
       }
     }
 
-    // 2. Gespeicherte ID aus localStorage
-    const saved = localStorage.getItem('gist_id');
-    if (saved) {
-      GIST_ID = saved;
-      const r = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers: GH });
-      if (r.ok) {
-        const d = await r.json();
-        setSyncStatus('');
-        showBanner(GIST_ID);
-        return JSON.parse(d.files?.[GIST_FILE]?.content || '[]');
+    function saveGalleryItems() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(galleryItems));
+    }
+
+    function setStatus(message, type = "") {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`.trim();
+    }
+
+    function updateCount() {
+      galleryCountEl.textContent = `${galleryItems.length} Bild${galleryItems.length === 1 ? "" : "er"}`;
+    }
+
+    function escapeHtml(value) {
+      return value;
+    }
+
+    function renderGallery() {
+      updateCount();
+
+      if (!galleryItems.length) {
+        galleryEl.innerHTML = `<div class="empty">Noch keine Bilder hochgeladen.</div>`;
+        return;
+      }
+
+      galleryEl.className = "gallery";
+      galleryEl.innerHTML = galleryItems
+        .map((item, index) => {
+          const safeName = escapeHtml(item.original_filename || "Bild");
+          const safeUrl = escapeHtml(item.secure_url || "");
+          return `
+            <article class="card">
+              <img src="${safeUrl}" alt="${safeName}">
+              <div class="card-body">
+                <h3 class="card-title">${safeName}</h3>
+                <a class="card-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer">Bild öffnen</a>
+                <button class="delete-btn" type="button" onclick="removeImage(${index})">Aus Galerie entfernen</button>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    async function uploadSingleFile(file) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      formData.append("folder", "website-gallery");
+
+      const response = await fetch(CLOUDINARY_URL, {
+        method: "POST",
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Upload fehlgeschlagen");
+      }
+
+      return response.json();
+    }
+
+    async function handleUpload() {
+      const files = Array.from(imageInput.files || []);
+
+      if (!files.length) {
+        setStatus("Bitte wähle mindestens ein Bild aus.", "error");
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      clearBtn.disabled = true;
+      setStatus("Upload läuft...", "");
+
+      try {
+        let uploadedCount = 0;
+
+        for (const file of files) {
+          const result = await uploadSingleFile(file);
+
+          galleryItems.unshift({
+            asset_id: result.asset_id,
+            public_id: result.public_id,
+            secure_url: result.secure_url,
+            original_filename: result.original_filename || file.name,
+            created_at: result.created_at
+          });
+
+          uploadedCount += 1;
+          setStatus(`${uploadedCount}/${files.length} Bild(er) hochgeladen...`, "");
+        }
+
+        saveGalleryItems();
+        renderGallery();
+        imageInput.value = "";
+        setStatus("Upload erfolgreich abgeschlossen.", "success");
+      } catch (error) {
+        console.error(error);
+        setStatus("Fehler beim Upload. Prüfe Cloud Name, Upload Preset und CORS/Cloudinary-Einstellungen.", "error");
+      } finally {
+        uploadBtn.disabled = false;
+        clearBtn.disabled = false;
       }
     }
 
-    // 3. Neues Gist erstellen
-    setSyncStatus('Erstelle Speicher …');
-    const r = await fetch('https://api.github.com/gists', {
-      method: 'POST', headers: GH,
-      body: JSON.stringify({
-        description: 'Galerie Bildliste',
-        public: false,
-        files: { [GIST_FILE]: { content: '[]' } }
-      })
-    });
-    if (!r.ok) throw new Error('Gist create failed: ' + r.status);
-    const d = await r.json();
-    GIST_ID = d.id;
-    localStorage.setItem('gist_id', GIST_ID);
-    showBanner(GIST_ID);
-    setSyncStatus('');
-    return [];
-  } catch(e) {
-    setSyncStatus('⚠ Fehler beim Laden');
-    console.error('gistLoad error:', e);
-    return [];
-  }
-}
-
-async function gistSave(images) {
-  if (!GIST_ID) return;
-  setSyncStatus('Speichere …');
-  try {
-    const r = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-      method: 'PATCH', headers: GH,
-      body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(images, null, 2) } } })
-    });
-    if (!r.ok) throw new Error('Save failed: ' + r.status);
-    setSyncStatus('✓ Gespeichert');
-    setTimeout(() => setSyncStatus(''), 2500);
-  } catch(e) {
-    setSyncStatus('⚠ Speicherfehler');
-    console.error('gistSave error:', e);
-  }
-}
-
-function showBanner(id) {
-  const el = document.getElementById('gistIdDisplay');
-  el.textContent = id;
-  el.onclick = () => {
-    navigator.clipboard.writeText(id).then(() => { el.textContent = '✓ Kopiert!'; setTimeout(() => el.textContent = id, 1500); }).catch(()=>{});
-  };
-  document.getElementById('gistBanner').style.display = 'block';
-}
-
-function setSyncStatus(t) { document.getElementById('syncStatus').textContent = t; }
-
-// ── GALLERY ──
-async function startGallery() {
-  document.getElementById('loadingState').style.display = 'block';
-  allImages = await gistLoad();
-  document.getElementById('loadingState').style.display = 'none';
-  renderAll();
-}
-
-function renderAll() {
-  const masonry = document.getElementById('masonry');
-  masonry.innerHTML = ''; allCards = [];
-  if (!allImages.length) {
-    document.getElementById('noResults').style.display = 'block';
-    document.getElementById('counter').textContent = '0 Bilder';
-    visibleCards = []; return;
-  }
-  document.getElementById('noResults').style.display = 'none';
-  allImages.forEach(img => addCard(img, false));
-  document.getElementById('counter').textContent = `${allImages.length} Bilder`;
-  visibleCards = [...allCards];
-}
-
-function addCard(imgData, prepend = true) {
-  const masonry = document.getElementById('masonry');
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.dataset.src  = imgData.url;
-  card.dataset.name = imgData.name;
-  card.dataset.id   = imgData.id;
-
-  const img = document.createElement('img');
-  img.src = imgData.thumb || imgData.url; img.alt = imgData.name; img.loading = 'lazy';
-  img.onload = () => img.classList.add('loaded');
-
-  const overlay = document.createElement('div'); overlay.className = 'card-overlay';
-  const bar = document.createElement('div'); bar.className = 'card-bar';
-  const nameSpan = document.createElement('span'); nameSpan.className = 'card-name'; nameSpan.textContent = imgData.name;
-
-  const dlBtn = document.createElement('button'); dlBtn.className = 'card-btn'; dlBtn.textContent = '⬇';
-  dlBtn.addEventListener('click', e => { e.stopPropagation(); downloadOne(imgData.url, imgData.name); });
-  const delBtn = document.createElement('button'); delBtn.className = 'card-btn del'; delBtn.textContent = '✕';
-  delBtn.addEventListener('click', e => { e.stopPropagation(); askDelete(card, imgData); });
-
-  bar.append(nameSpan, dlBtn, delBtn);
-  overlay.append(bar);
-  card.append(img, overlay);
-  card.addEventListener('click', () => openLightbox(card));
-
-  if (prepend) { masonry.prepend(card); allCards.unshift(card); }
-  else         { masonry.append(card);  allCards.push(card); }
-}
-
-// ── SEARCH ──
-document.getElementById('searchInput').addEventListener('input', function() {
-  const q = this.value.trim().toLowerCase();
-  visibleCards = []; let n = 0;
-  allCards.forEach(c => {
-    const show = !q || c.dataset.name.toLowerCase().includes(q);
-    c.style.display = show ? '' : 'none';
-    if (show) { visibleCards.push(c); n++; }
-  });
-  document.getElementById('counter').textContent = q ? `${n} von ${allCards.length}` : `${allCards.length} Bilder`;
-  document.getElementById('noResults').style.display = n===0 ? 'block':'none';
-});
-
-// ── DOWNLOAD ──
-function downloadOne(src, name) {
-  const a = document.createElement('a'); a.href = src; a.download = name;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-}
-
-// ── DELETE ──
-let pendingDelete = null;
-function askDelete(card, imgData) {
-  pendingDelete = { card, imgData };
-  document.getElementById('confirmName').textContent = imgData.name;
-  document.getElementById('confirmModal').classList.add('open');
-}
-document.getElementById('confirmYes').addEventListener('click', async () => {
-  document.getElementById('confirmModal').classList.remove('open');
-  if (!pendingDelete) return;
-  const { card, imgData } = pendingDelete; pendingDelete = null;
-  allImages = allImages.filter(i => i.id !== imgData.id);
-  await gistSave(allImages);
-  const ci = allCards.indexOf(card); if(ci>-1) allCards.splice(ci,1);
-  const vi = visibleCards.indexOf(card); if(vi>-1) visibleCards.splice(vi,1);
-  card.remove();
-  document.getElementById('counter').textContent = `${allCards.length} Bilder`;
-  if (!allCards.length) document.getElementById('noResults').style.display = 'block';
-});
-document.getElementById('confirmNo').addEventListener('click', () => {
-  document.getElementById('confirmModal').classList.remove('open'); pendingDelete = null;
-});
-
-// ── UPLOAD ──
-let filesToUpload = [];
-document.getElementById('uploadBtn').addEventListener('click', () => { document.getElementById('uploadModal').classList.add('open'); resetUploadModal(); });
-document.getElementById('closeUploadBtn').addEventListener('click', () => document.getElementById('uploadModal').classList.remove('open'));
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); handleFiles([...e.dataTransfer.files]); });
-fileInput.addEventListener('change', () => handleFiles([...fileInput.files]));
-
-function handleFiles(files) {
-  filesToUpload = files.filter(f => f.type.startsWith('image/'));
-  const q = document.getElementById('uploadQueue'); q.innerHTML = '';
-  filesToUpload.forEach((f, i) => {
-    const row = document.createElement('div'); row.className = 'queue-item';
-    row.innerHTML = `<span class="queue-item-name">${f.name}</span><span class="queue-item-status" id="qs-${i}">BEREIT</span>`;
-    q.appendChild(row);
-  });
-  document.getElementById('startUploadBtn').disabled = !filesToUpload.length;
-  document.getElementById('uploadMsg').textContent = filesToUpload.length ? `${filesToUpload.length} Datei(en)` : '';
-}
-function resetUploadModal() {
-  filesToUpload = []; document.getElementById('uploadQueue').innerHTML = '';
-  fileInput.value = ''; document.getElementById('startUploadBtn').disabled = true;
-  document.getElementById('uploadMsg').textContent = '';
-  document.getElementById('closeUploadBtn').textContent = 'ABBRECHEN';
-  document.getElementById('closeUploadBtn').disabled = false;
-}
-
-document.getElementById('startUploadBtn').addEventListener('click', async () => {
-  if (!filesToUpload.length) return;
-  document.getElementById('startUploadBtn').disabled = true;
-  document.getElementById('closeUploadBtn').disabled = true;
-  let ok = 0, fail = 0;
-
-  for (let i = 0; i < filesToUpload.length; i++) {
-    const file = filesToUpload[i];
-    const statusEl = document.getElementById(`qs-${i}`);
-    statusEl.textContent = 'LÄDT …'; statusEl.className = 'queue-item-status';
-    try {
-      const result = await uploadToImgBB(file);
-      const imgData = {
-        id:    result.data.id,
-        name:  file.name,
-        url:   result.data.url,
-        thumb: result.data.thumb?.url || result.data.medium?.url || result.data.url
-      };
-      allImages.push(imgData);
-      addCard(imgData, true);
-      visibleCards = [...allCards];
-      document.getElementById('counter').textContent = `${allCards.length} Bilder`;
-      document.getElementById('noResults').style.display = 'none';
-      statusEl.textContent = '✓ OK'; statusEl.className = 'queue-item-status ok';
-      ok++;
-    } catch(e) {
-      statusEl.textContent = '✕ FEHLER'; statusEl.className = 'queue-item-status err';
-      console.error(e); fail++;
+    function removeImage(index) {
+      galleryItems.splice(index, 1);
+      saveGalleryItems();
+      renderGallery();
+      setStatus("Bild aus der lokalen Galerie-Anzeige entfernt.", "success");
     }
-  }
 
-  if (ok > 0) await gistSave(allImages);
-  document.getElementById('uploadMsg').textContent = `${ok} hochgeladen${fail ? ', '+fail+' fehlgeschlagen':''}`;
-  document.getElementById('closeUploadBtn').disabled = false;
-  document.getElementById('closeUploadBtn').textContent = 'SCHLIESSEN';
-  filesToUpload = [];
-});
+    function clearGalleryView() {
+      galleryItems = [];
+      saveGalleryItems();
+      renderGallery();
+      setStatus("Galerie-Anzeige im Browser geleert. Bilder bleiben bei Cloudinary gespeichert.", "success");
+    }
 
-async function uploadToImgBB(file) {
-  const b64 = await new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result.split(',')[1]);
-    r.onerror = () => rej(new Error('Lesefehler'));
-    r.readAsDataURL(file);
-  });
-  const fd = new FormData();
-  fd.append('key', IMGBB_KEY);
-  fd.append('image', b64);
-  fd.append('name', file.name.replace(/\.[^/.]+$/, ''));
-  const resp = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: fd });
-  const data = await resp.json();
-  if (!data.success) throw new Error(data.error?.message || `HTTP ${resp.status}`);
-  return data;
-}
+    uploadBtn.addEventListener("click", handleUpload);
+    clearBtn.addEventListener("click", clearGalleryView);
 
-// ── LIGHTBOX ──
-const lightbox = document.getElementById('lightbox');
-function openLightbox(card) { currentIndex = visibleCards.indexOf(card); showLb(currentIndex); lightbox.classList.add('open'); }
-function showLb(idx) {
-  const card = visibleCards[idx]; if(!card) return;
-  document.getElementById('lightboxImg').src = card.dataset.src;
-  document.getElementById('lightboxLabel').textContent = card.dataset.name;
-  document.getElementById('lbDlBtn').onclick = () => downloadOne(card.dataset.src, card.dataset.name);
-}
-document.getElementById('lightboxClose').addEventListener('click', () => lightbox.classList.remove('open'));
-lightbox.addEventListener('click', e => { if(e.target===lightbox) lightbox.classList.remove('open'); });
-document.getElementById('lbPrev').addEventListener('click', e => { e.stopPropagation(); currentIndex=(currentIndex-1+visibleCards.length)%visibleCards.length; showLb(currentIndex); });
-document.getElementById('lbNext').addEventListener('click', e => { e.stopPropagation(); currentIndex=(currentIndex+1)%visibleCards.length; showLb(currentIndex); });
-document.addEventListener('keydown', e => {
-  if (!lightbox.classList.contains('open')) return;
-  if (e.key==='ArrowLeft')  { currentIndex=(currentIndex-1+visibleCards.length)%visibleCards.length; showLb(currentIndex); }
-  if (e.key==='ArrowRight') { currentIndex=(currentIndex+1)%visibleCards.length; showLb(currentIndex); }
-  if (e.key==='Escape') lightbox.classList.remove('open');
-});
-</script>
+    renderGallery();
+  </script>
 </body>
 </html>
