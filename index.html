@@ -14,7 +14,6 @@
       --text: #d7ffe9;
       --muted: #7abda0;
       --accent: #00ff9d;
-      --accent-soft: rgba(0, 255, 157, 0.16);
       --danger: #ff4d67;
       --warning: #ffe066;
       --shadow: 0 0 30px rgba(0, 255, 157, 0.08);
@@ -54,6 +53,26 @@
 
     .hidden {
       display: none !important;
+    }
+
+    .lang-toggle {
+      position: fixed;
+      top: 8px;
+      right: 8px;
+      width: 18px;
+      height: 18px;
+      opacity: 0.08;
+      border: 1px solid rgba(0, 255, 157, 0.15);
+      background: rgba(0, 255, 157, 0.08);
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 20;
+      box-shadow: 0 0 10px rgba(0, 255, 157, 0.08);
+    }
+
+    .lang-toggle:hover {
+      opacity: 0.65;
+      transform: scale(1.08);
     }
 
     .access-screen {
@@ -448,17 +467,19 @@
   </style>
 </head>
 <body>
+  <button id="langToggle" class="lang-toggle" type="button" aria-label="toggle language"></button>
+
   <section id="accessScreen" class="access-screen">
     <div class="access-panel">
-      <div class="badge">TOP SECRET • LEVEL X</div>
-      <h1 class="access-title">Закрытый доступ</h1>
-      <p class="access-text">
+      <div id="badgeText" class="badge">TOP SECRET • LEVEL X</div>
+      <h1 id="accessTitle" class="access-title">Закрытый доступ</h1>
+      <p id="accessText" class="access-text">
         Введите код доступа, чтобы открыть секретный архив изображений.
         Без правильного пароля вход запрещён.
       </p>
 
       <div class="access-form">
-        <label class="access-label" for="passwordInput">Код доступа</label>
+        <label id="accessLabel" class="access-label" for="passwordInput">Код доступа</label>
         <input
           id="passwordInput"
           class="access-input"
@@ -476,9 +497,9 @@
   <main id="appShell" class="app-shell hidden">
     <header class="topbar">
       <div class="topbar-left">
-        <div class="eyebrow">Top Secret Archive</div>
-        <h1 class="main-title">Секретная галерея</h1>
-        <p class="main-subtitle">
+        <div id="eyebrowText" class="eyebrow">Top Secret Archive</div>
+        <h1 id="mainTitle" class="main-title">Секретная галерея</h1>
+        <p id="mainSubtitle" class="main-subtitle">
           Загружайте изображения с компьютера. Файлы сохраняются в Cloudinary,
           а раскладка построена в стиле Pinterest: карточки автоматически
           становятся друг под другом в зависимости от формы и высоты изображения.
@@ -491,8 +512,8 @@
     </header>
 
     <section class="panel upload-panel">
-      <h2 class="panel-title">Загрузка файлов</h2>
-      <p class="panel-text">
+      <h2 id="uploadTitle" class="panel-title">Загрузка файлов</h2>
+      <p id="uploadText" class="panel-text">
         Выберите одно или несколько изображений. После загрузки они останутся в Cloudinary.
       </p>
 
@@ -505,14 +526,14 @@
       <div id="status" class="status"></div>
 
       <div class="info-line">
-        <div>Cloud name: <code>dal67qskn</code></div>
-        <div>Upload preset: <code>gallery_unsigned</code></div>
+        <div><span id="cloudNameLabel">Cloud name</span>: <code>dal67qskn</code></div>
+        <div><span id="presetLabel">Upload preset</span>: <code>gallery_unsigned</code></div>
       </div>
     </section>
 
     <section>
       <div class="section-head">
-        <h2 class="section-title">Архив изображений</h2>
+        <h2 id="galleryTitle" class="section-title">Архив изображений</h2>
         <div id="galleryCount" class="section-meta">0 файлов</div>
       </div>
       <div id="gallery"></div>
@@ -524,9 +545,82 @@
     const CLOUD_NAME = "dal67qskn";
     const UPLOAD_PRESET = "gallery_unsigned";
     const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+    const FOLDER_NAME = `shared-${PASSWORD}`;
 
-    const STORAGE_KEY = "cloudinary_gallery_items_v2";
+    const STORAGE_KEY = "cloudinary_shared_gallery_" + PASSWORD;
     const ACCESS_KEY = "top_secret_gallery_access";
+    const LANGUAGE_KEY = "top_secret_gallery_language";
+
+    const translations = {
+      ru: {
+        pageTitle: "TOP SECRET | Закрытая галерея",
+        badge: "TOP SECRET • LEVEL X",
+        accessTitle: "Закрытый доступ",
+        accessText: "Введите код доступа, чтобы открыть секретный архив изображений. Без правильного пароля вход запрещён.",
+        accessLabel: "Код доступа",
+        passwordPlaceholder: "Введите пароль",
+        loginButton: "Открыть архив",
+        loginError: "Неверный пароль. Доступ запрещён.",
+        eyebrow: "Top Secret Archive",
+        mainTitle: "Секретная галерея",
+        mainSubtitle: "Загружайте изображения с компьютера. Файлы сохраняются в общем облачном архиве Cloudinary, а раскладка построена в стиле Pinterest: карточки автоматически становятся друг под другом в зависимости от формы и высоты изображения.",
+        logoutButton: "Выйти",
+        uploadTitle: "Загрузка файлов",
+        uploadText: "Все пользователи с этим паролем работают с одной общей галереей. Новые файлы загружаются в общий скрытый раздел.",
+        uploadButton: "Загрузить",
+        clearButton: "Очистить список",
+        cloudNameLabel: "Cloud name",
+        presetLabel: "Upload preset",
+        galleryTitle: "Общий архив изображений",
+        emptyGallery: "Архив пока пуст. Загрузите первое изображение.",
+        openImage: "Открыть изображение",
+        removeLocal: "Убрать из списка",
+        selectImage: "Выберите хотя бы одно изображение.",
+        uploading: "Идёт загрузка...",
+        uploadedProgress: "Загружено {current} из {total}",
+        uploadSuccess: "Загрузка завершена. Общая галерея обновлена.",
+        uploadError: "Ошибка при загрузке. Проверьте настройки Cloudinary.",
+        removedLocal: "Изображение убрано только из локального списка.",
+        clearedLocal: "Локальный список очищен. Файлы в Cloudinary не удалены.",
+        filesOne: "файл",
+        filesFew: "файла",
+        filesMany: "файлов"
+      },
+      de: {
+        pageTitle: "TOP SECRET | Geschlossene Galerie",
+        badge: "TOP SECRET • STUFE X",
+        accessTitle: "Geschützter Zugang",
+        accessText: "Gib den Zugangscode ein, um das geheime Bildarchiv zu öffnen. Ohne korrektes Passwort ist der Zutritt gesperrt.",
+        accessLabel: "Zugangscode",
+        passwordPlaceholder: "Passwort eingeben",
+        loginButton: "Archiv öffnen",
+        loginError: "Falsches Passwort. Zugriff verweigert.",
+        eyebrow: "Top Secret Archiv",
+        mainTitle: "Geheime Galerie",
+        mainSubtitle: "Lade Bilder vom Computer hoch. Die Dateien werden in einem gemeinsamen Cloudinary-Archiv gespeichert, und das Layout funktioniert im Pinterest-Stil: Karten ordnen sich automatisch je nach Form und Höhe an.",
+        logoutButton: "Abmelden",
+        uploadTitle: "Datei-Upload",
+        uploadText: "Alle Nutzer mit diesem Passwort arbeiten mit derselben gemeinsamen Galerie. Neue Dateien werden in denselben versteckten Bereich hochgeladen.",
+        uploadButton: "Hochladen",
+        clearButton: "Liste leeren",
+        cloudNameLabel: "Cloud-Name",
+        presetLabel: "Upload-Preset",
+        galleryTitle: "Gemeinsames Bildarchiv",
+        emptyGallery: "Das Archiv ist noch leer. Lade das erste Bild hoch.",
+        openImage: "Bild öffnen",
+        removeLocal: "Aus Liste entfernen",
+        selectImage: "Bitte wähle mindestens ein Bild aus.",
+        uploading: "Upload läuft...",
+        uploadedProgress: "{current} von {total} hochgeladen",
+        uploadSuccess: "Upload abgeschlossen. Die gemeinsame Galerie wurde aktualisiert.",
+        uploadError: "Fehler beim Upload. Prüfe die Cloudinary-Einstellungen.",
+        removedLocal: "Das Bild wurde nur aus der lokalen Liste entfernt.",
+        clearedLocal: "Die lokale Liste wurde geleert. Dateien in Cloudinary bleiben erhalten.",
+        filesOne: "Datei",
+        filesFew: "Dateien",
+        filesMany: "Dateien"
+      }
+    };
 
     const accessScreen = document.getElementById("accessScreen");
     const appShell = document.getElementById("appShell");
@@ -534,6 +628,7 @@
     const loginBtn = document.getElementById("loginBtn");
     const loginStatus = document.getElementById("loginStatus");
     const logoutBtn = document.getElementById("logoutBtn");
+    const langToggle = document.getElementById("langToggle");
 
     const imageInput = document.getElementById("imageInput");
     const uploadBtn = document.getElementById("uploadBtn");
@@ -542,7 +637,20 @@
     const galleryEl = document.getElementById("gallery");
     const galleryCountEl = document.getElementById("galleryCount");
 
+    let currentLanguage = localStorage.getItem(LANGUAGE_KEY) || "ru";
     let galleryItems = loadGalleryItems();
+
+    function text(key) {
+      return translations[currentLanguage][key];
+    }
+
+    function formatText(key, values) {
+      let result = text(key);
+      Object.keys(values).forEach(function (name) {
+        result = result.replace(`{${name}}`, values[name]);
+      });
+      return result;
+    }
 
     function loadGalleryItems() {
       try {
@@ -568,9 +676,19 @@
       loginStatus.className = `status ${type}`.trim();
     }
 
+    function fileLabel(count) {
+      if (currentLanguage === "de") {
+        return count === 1 ? text("filesOne") : text("filesMany");
+      }
+
+      if (count === 1) return text("filesOne");
+      if (count >= 2 && count <= 4) return text("filesFew");
+      return text("filesMany");
+    }
+
     function updateCount() {
       const count = galleryItems.length;
-      galleryCountEl.textContent = `${count} файл${count === 1 ? "" : count < 5 ? "а" : "ов"}`;
+      galleryCountEl.textContent = `${count} ${fileLabel(count)}`;
     }
 
     function escapeHtml(value) {
@@ -582,22 +700,22 @@
 
       if (!galleryItems.length) {
         galleryEl.className = "";
-        galleryEl.innerHTML = `<div class="empty">Архив пока пуст. Загрузите первое изображение.</div>`;
+        galleryEl.innerHTML = `<div class="empty">${text("emptyGallery")}</div>`;
         return;
       }
 
       galleryEl.className = "gallery";
       galleryEl.innerHTML = galleryItems
         .map((item, index) => {
-          const safeName = escapeHtml(item.original_filename || "Файл");
+          const safeName = escapeHtml(item.original_filename || "File");
           const safeUrl = escapeHtml(item.secure_url || "");
           return `
             <article class="card">
               <img src="${safeUrl}" alt="${safeName}" loading="lazy">
               <div class="card-body">
                 <h3 class="card-title">${safeName}</h3>
-                <a class="card-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer">Открыть изображение</a>
-                <button class="btn btn-danger" type="button" onclick="removeImage(${index})">Убрать из списка</button>
+                <a class="card-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text("openImage")}</a>
+                <button class="btn btn-danger" type="button" onclick="removeImage(${index})">${text("removeLocal")}</button>
               </div>
             </article>
           `;
@@ -609,7 +727,7 @@
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", UPLOAD_PRESET);
-      formData.append("folder", "website-gallery");
+      formData.append("folder", FOLDER_NAME);
 
       const response = await fetch(CLOUDINARY_URL, {
         method: "POST",
@@ -618,7 +736,7 @@
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Ошибка загрузки");
+        throw new Error(errorText || "Upload error");
       }
 
       return response.json();
@@ -628,13 +746,13 @@
       const files = Array.from(imageInput.files || []);
 
       if (!files.length) {
-        setStatus("Выберите хотя бы одно изображение.", "error");
+        setStatus(text("selectImage"), "error");
         return;
       }
 
       uploadBtn.disabled = true;
       clearBtn.disabled = true;
-      setStatus("Идёт загрузка...", "warning");
+      setStatus(text("uploading"), "warning");
 
       try {
         let uploadedCount = 0;
@@ -651,16 +769,16 @@
           });
 
           uploadedCount += 1;
-          setStatus(`Загружено ${uploadedCount} из ${files.length}`, "warning");
+          setStatus(formatText("uploadedProgress", { current: uploadedCount, total: files.length }), "warning");
         }
 
         saveGalleryItems();
         renderGallery();
         imageInput.value = "";
-        setStatus("Загрузка завершена. Файлы сохранены.", "success");
+        setStatus(text("uploadSuccess"), "success");
       } catch (error) {
         console.error(error);
-        setStatus("Ошибка при загрузке. Проверьте настройки Cloudinary.", "error");
+        setStatus(text("uploadError"), "error");
       } finally {
         uploadBtn.disabled = false;
         clearBtn.disabled = false;
@@ -671,14 +789,14 @@
       galleryItems.splice(index, 1);
       saveGalleryItems();
       renderGallery();
-      setStatus("Изображение убрано только из локального списка.", "success");
+      setStatus(text("removedLocal"), "success");
     }
 
     function clearGalleryView() {
       galleryItems = [];
       saveGalleryItems();
       renderGallery();
-      setStatus("Локальный список очищен. Файлы в Cloudinary не удалены.", "success");
+      setStatus(text("clearedLocal"), "success");
     }
 
     function unlockApp() {
@@ -704,8 +822,37 @@
         localStorage.setItem(ACCESS_KEY, "granted");
         unlockApp();
       } else {
-        setLoginStatus("Неверный пароль. Доступ запрещён.", "error");
+        setLoginStatus(text("loginError"), "error");
       }
+    }
+
+    function applyLanguage() {
+      document.documentElement.lang = currentLanguage;
+      document.title = text("pageTitle");
+      document.getElementById("badgeText").textContent = text("badge");
+      document.getElementById("accessTitle").textContent = text("accessTitle");
+      document.getElementById("accessText").textContent = text("accessText");
+      document.getElementById("accessLabel").textContent = text("accessLabel");
+      passwordInput.placeholder = text("passwordPlaceholder");
+      loginBtn.textContent = text("loginButton");
+      document.getElementById("eyebrowText").textContent = text("eyebrow");
+      document.getElementById("mainTitle").textContent = text("mainTitle");
+      document.getElementById("mainSubtitle").textContent = text("mainSubtitle");
+      logoutBtn.textContent = text("logoutButton");
+      document.getElementById("uploadTitle").textContent = text("uploadTitle");
+      document.getElementById("uploadText").textContent = text("uploadText");
+      uploadBtn.textContent = text("uploadButton");
+      clearBtn.textContent = text("clearButton");
+      document.getElementById("cloudNameLabel").textContent = text("cloudNameLabel");
+      document.getElementById("presetLabel").textContent = text("presetLabel");
+      document.getElementById("galleryTitle").textContent = text("galleryTitle");
+      renderGallery();
+    }
+
+    function toggleLanguage() {
+      currentLanguage = currentLanguage === "ru" ? "de" : "ru";
+      localStorage.setItem(LANGUAGE_KEY, currentLanguage);
+      applyLanguage();
     }
 
     loginBtn.addEventListener("click", handleLogin);
@@ -718,6 +865,9 @@
     uploadBtn.addEventListener("click", handleUpload);
     clearBtn.addEventListener("click", clearGalleryView);
     logoutBtn.addEventListener("click", lockApp);
+    langToggle.addEventListener("click", toggleLanguage);
+
+    applyLanguage();
 
     if (localStorage.getItem(ACCESS_KEY) === "granted") {
       unlockApp();
